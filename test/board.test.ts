@@ -80,7 +80,7 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
 
 test('the manifest is one Brydio’s server accepts', () => {
   expect(validateManifest(manifest)).toMatchObject({ ok: true, problems: [] });
-  expect(manifest.version).toBe('0.10.2');
+  expect(manifest.version).toBe('0.10.3');
 });
 
 describe('the board', () => {
@@ -98,7 +98,7 @@ describe('the board', () => {
     expect(columnOf('Fix the login page')).toBe('To do');
     expect(columnOf('Export to CSV')).toBe('Doing');
     expect(columnOf('Write the help page')).toBe('Done');
-    expect(host!.calls[0]).toMatchObject({ tool: 'list_issues', input: { limit: 200 } });
+    expect(host!.calls[0]).toMatchObject({ tool: 'list_issues', input: { limit: 40 } });
     expect(host!.watching).toEqual(['issues']);
     // No arrows: the board's own drag and keyboard move a card.
     expect(host!.findAll(node => node.type === 'bry-button' && ['←', '→'].includes(String(node.props.label)))).toEqual([]);

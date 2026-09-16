@@ -66,6 +66,9 @@ function Screen() {
 /** A page of issues: the store's largest. */
 const PAGE = 200;
 
+/** The first page is small, so a long board opens as soon as a column's first cards can be drawn. */
+const FIRST_PAGE = 40;
+
 /**
  * How many cards a column draws at once. A column holds all its issues'
  * count, and draws only the cards around what is in view, which it asks for
@@ -88,7 +91,7 @@ function useIssues() {
 
     try {
       do {
-        const page: { items: Issue[]; nextCursor: string | null } = await data.list<Issue>('issues', { limit: PAGE, ...(cursor ? { cursor } : {}) });
+        const page: { items: Issue[]; nextCursor: string | null } = await data.list<Issue>('issues', { limit: cursor ? PAGE : FIRST_PAGE, ...(cursor ? { cursor } : {}) });
 
         items.push(...page.items);
         cursor = page.nextCursor;
