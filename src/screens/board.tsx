@@ -4,12 +4,11 @@ import { mount, useCallback, useEffect, useState } from '@brydio/app/preact';
 import { COLUMNS, neighbour, reason, type Issue, type Status } from '../issues.ts';
 
 /**
- * The Issues board (A8-F01, Phase 0).
+ * The Issues board (A8-F01).
  *
  * Three columns, To do, Doing and Done, each a stack of cards. A card shows
- * the issue's title and moves it one column left or right. "New issue" adds
- * one to To do. Phase 0 has no text box, so a new issue is called "New
- * issue" until the assistant, or a later version of this screen, renames it.
+ * the issue's title and labels, and moves it one column left or right. "New
+ * issue" opens a small form for a title; the issue lands in To do.
  *
  * Every write goes through the generated tools, and Brydio asks the person
  * first. Phase 0 has no live updates either, so the board reads the list
@@ -22,6 +21,8 @@ function Board() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The title being typed, or null while the form is closed.
+  const [draft, setDraft] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -40,21 +41,32 @@ function Board() {
     void load();
   }, [load]);
 
-  const write = async (tool: string, input: Record<string, unknown>, failed: string) => {
+  const write = async (tool: string, input: Record<string, unknown>, failed: string): Promise<boolean> => {
     setBusy(true);
 
     try {
       await tools.call(tool, input);
       await load();
+
+      return true;
     } catch (failure) {
       setError(`${failed} ${reason(failure)}`);
 
       // Somebody else changed it: show the board as it is now, so the next
       // press starts from the right version.
       if (failure instanceof ToolError && failure.code === 'stale') await load();
+
+      return false;
     } finally {
       setBusy(false);
     }
+  };
+
+  const add = async () => {
+    const title = draft?.trim() ?? '';
+
+    if (!title) return;
+    if (await write('create_issue', { title, status: 'todo' }, 'Couldn’t add the issue.')) setDraft(null);
   };
 
   const move = (issue: Issue, status: Status) =>
@@ -64,13 +76,26 @@ function Board() {
     <bry-stack gap="4">
       <bry-stack direction="row" justify="between" align="center">
         <bry-heading level={1} text="Issues" />
-        <bry-button
-          label="New issue"
-          variant="primary"
-          disabled={busy}
-          onPress={() => write('create_issue', { title: 'New issue', status: 'todo' }, 'Couldn’t add an issue.')}
-        />
+        <bry-button label="New issue" variant="primary" disabled={busy || draft !== null} onPress={() => setDraft('')} />
       </bry-stack>
+      {draft !== null && (
+        <bry-card padding="3">
+          <bry-stack direction="row" gap="2" align="end">
+            <bry-input
+              label="Title"
+              placeholder="What needs doing?"
+              value={draft}
+              maxLength={200}
+              required
+              disabled={busy}
+              onChange={event => setDraft(event.detail.value)}
+              onSubmit={() => void add()}
+            />
+            <bry-button label="Add" variant="primary" working={busy} disabled={!draft.trim()} onPress={() => void add()} />
+            <bry-button label="Cancel" variant="ghost" disabled={busy} onPress={() => setDraft(null)} />
+          </bry-stack>
+        </bry-card>
+      )}
       {error && <bry-text tone="danger" text={error} />}
       {!loaded && <bry-text tone="muted" text="Loading issues…" />}
       <bry-stack direction="row" gap="4" align="start">
@@ -89,6 +114,13 @@ function Board() {
                   <bry-card key={issue.id} padding="3">
                     <bry-stack gap="2">
                       <bry-text text={issue.title} />
+                      {(issue.labels ?? []).length > 0 && (
+                        <bry-stack direction="row" gap="1" wrap>
+                          {(issue.labels ?? []).map(label => (
+                            <bry-badge key={label} text={label} tone="neutral" />
+                          ))}
+                        </bry-stack>
+                      )}
                       <bry-stack direction="row" gap="2">
                         {left && <bry-button label="←" variant="ghost" size="sm" disabled={busy} onPress={() => move(issue, left)} />}
                         {right && <bry-button label="→" variant="ghost" size="sm" disabled={busy} onPress={() => move(issue, right)} />}

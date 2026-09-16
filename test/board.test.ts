@@ -117,14 +117,58 @@ describe('the board', () => {
     expect(host!.refusals).toEqual([]);
   });
 
-  test('New issue adds one to To do with create_issue', async () => {
+  test('New issue opens a form for a title, and Add makes it in To do with create_issue', async () => {
     await open();
 
     host!.press(host!.byText('New issue')!);
+
+    const field = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input')[0], { what: 'the title field' });
+    const add = () => host!.findAll(node => node.type === 'bry-button' && node.props.label === 'Add')[0]!;
+
+    expect(field.props).toMatchObject({ label: 'Title', value: '', required: true });
+    // Nothing to add until something is typed.
+    expect(add().props.disabled).toBe(true);
+
+    host!.event(field.id, 'change', { value: 'Fix the door' });
+    await host!.waitFor(() => !add().props.disabled, { what: 'Add to be pressable' });
+    host!.press(add());
     await host!.waitFor(() => host!.byText('To do (2)'), { what: 'the new issue' });
 
-    expect(host!.calls[1]).toMatchObject({ tool: 'create_issue', input: { title: 'New issue', status: 'todo' } });
-    expect(columnOf('New issue')).toBe('To do');
+    expect(host!.calls[1]).toMatchObject({ tool: 'create_issue', input: { title: 'Fix the door', status: 'todo' } });
+    expect(columnOf('Fix the door')).toBe('To do');
+    // The form closes once the issue is made.
+    await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input').length === 0, { what: 'the form to close' });
+    expect(host!.refusals).toEqual([]);
+  });
+
+  test('Enter in the title field adds the issue too, and Cancel closes the form without a call', async () => {
+    await open();
+
+    host!.press(host!.byText('New issue')!);
+
+    let field = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input')[0], { what: 'the title field' });
+
+    host!.event(field.id, 'change', { value: 'Export to PDF' });
+    await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input')[0]?.props.value === 'Export to PDF', { what: 'the typed title' });
+    host!.event(field.id, 'submit', { value: 'Export to PDF' });
+    await host!.waitFor(() => host!.byText('To do (2)'), { what: 'the new issue' });
+
+    host!.press(host!.byText('New issue')!);
+    field = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input')[0], { what: 'the title field again' });
+    host!.event(field.id, 'change', { value: 'Never mind' });
+    host!.press(host!.findAll(node => node.type === 'bry-button' && node.props.label === 'Cancel')[0]!);
+    await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input').length === 0, { what: 'the form to close' });
+
+    expect(host!.calls.filter(call => call.tool === 'create_issue')).toHaveLength(1);
+  });
+
+  test('a card shows its labels', async () => {
+    await open();
+
+    const badge = host!.findAll(node => node.type === 'bry-badge' && node.props.text === 'data')[0];
+
+    expect(badge).toBeDefined();
+    expect(cardOf('Export to CSV').card.id).toBe(host!.parentOf(host!.parentOf(host!.parentOf(badge!)!)!)!.id);
   });
 
   test('a write that fails leaves the board as it was and says why on an error line', async () => {
