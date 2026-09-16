@@ -1,4 +1,4 @@
-import { ToolError, data, tools } from '@brydio/app';
+import { ToolError, data, navigate, tools } from '@brydio/app';
 import { askAbout } from '@brydio/app/ask';
 import { useEffect, useHost, useList, useMemberList, useMembers, useProjects, useRef, useState } from '@brydio/app/preact';
 
@@ -193,7 +193,24 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
       )}
       {failed && <bry-text tone="danger" text={failed} />}
       {asked && <bry-text tone="danger" text={asked} />}
-      {elsewhere && <bry-text tone="muted" text={`This issue belongs to ${projects.get(elsewhere)?.name ?? 'another project'}.`} />}
+      {elsewhere && (
+        <bry-stack direction="row" align="center" gap="2">
+          <bry-text tone="muted" text={`This issue belongs to ${projects.get(elsewhere)?.name ?? 'another project'}.`} />
+          {/* A link there: Brydio opens the project's page, if the person can open it (A2-F06-S02). */}
+          <bry-button
+            label={`Open ${projects.get(elsewhere)?.name ?? 'that project'}`}
+            variant="ghost"
+            size="sm"
+            onPress={async () => {
+              try {
+                await navigate({ kind: 'project', id: elsewhere });
+              } catch (failure) {
+                setFailed(`Couldn’t open that project. ${reason(failure)}`);
+              }
+            }}
+          />
+        </bry-stack>
+      )}
       <bry-input
         label="Title"
         value={title}

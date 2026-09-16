@@ -209,6 +209,10 @@ describe('the issue screen (A8-F01-S03)', () => {
     await host.waitFor(() => host!.byText('This issue belongs to Website refresh.'), { what: 'where it belongs' });
 
     expect(of('bry-input', 'Title')!.props.value).toBe('Fix the login page');
+    // The link there asks Brydio to open that project's page.
+    host.press(of('bry-button', 'Open Website refresh')!);
+    await host.waitFor(() => host!.navigations.some(to => to.kind === 'project'), { what: 'the project to be opened' });
+    expect(host.navigations).toEqual([{ kind: 'project', id: 'project_web', opened: true }]);
     host.stop();
 
     // One that belongs here says nothing of the sort.
