@@ -1,5 +1,6 @@
 import { ToolError, data, tools } from '@brydio/app';
-import { useEffect, useList, useMemberList, useMembers, useRef, useState } from '@brydio/app/preact';
+import { askAbout } from '@brydio/app/ask';
+import { useEffect, useHost, useList, useMemberList, useMembers, useProjects, useRef, useState } from '@brydio/app/preact';
 
 import { COLUMNS, dueText, reason, type Issue, type Status } from '../issues.ts';
 
@@ -48,6 +49,11 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
   const directory = useMemberList();
   const assigned = useMembers([issue?.assignee]);
   const people = new Map([...assigned, ...directory.members.map(person => [person.id, person] as const)]);
+  // An issue opened here from another project (a link) still opens, and says where it belongs (A2-F06-S02).
+  const here = useHost().placement.projectId;
+  const elsewhere = here && issue?.project && issue.project !== here ? issue.project : null;
+  const projects = useProjects([elsewhere]);
+  const [asked, setAsked] = useState<string | null>(null);
   // The version the next save starts from, and the saves waiting their turn.
   const version = useRef(0);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
@@ -123,9 +129,28 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
   };
 
   const back = (
-    <bry-stack direction="row" gap="2" align="center">
-      <bry-button label="Back to the board" variant="ghost" size="sm" onPress={onBack} />
-      {saving > 0 && <bry-text tone="muted" size="sm" text="Saving…" />}
+    <bry-stack direction="row" gap="2" align="center" justify="between">
+      <bry-stack direction="row" gap="2" align="center">
+        <bry-button label="Back to the board" variant="ghost" size="sm" onPress={onBack} />
+        {saving > 0 && <bry-text tone="muted" size="sm" text="Saving…" />}
+      </bry-stack>
+      {issue && (
+        <bry-button
+          label="Ask about this issue"
+          variant="secondary"
+          size="sm"
+          onPress={async () => {
+            // Brydio opens a chat in the project with this issue attached and the words in the
+            // composer; the person reads them and sends them, or doesn't. Nothing is sent from here.
+            try {
+              await askAbout({ collection: 'issues', id, title: issue.title }, `What should happen next on “${issue.title}”?`);
+              setAsked(null);
+            } catch (failure) {
+              setAsked(`Couldn’t start a chat about it. ${reason(failure)}`);
+            }
+          }}
+        />
+      )}
     </bry-stack>
   );
 
@@ -153,6 +178,8 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
         </bry-card>
       )}
       {failed && <bry-text tone="danger" text={failed} />}
+      {asked && <bry-text tone="danger" text={asked} />}
+      {elsewhere && <bry-text tone="muted" text={`This issue belongs to ${projects.get(elsewhere)?.name ?? 'another project'}.`} />}
       <bry-input
         label="Title"
         value={title}

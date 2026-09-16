@@ -166,6 +166,44 @@ describe('the issue screen (A8-F01-S03)', () => {
     ]);
   });
 
+  test('Ask about this issue drafts a chat about it, for the person to send, and sends nothing', async () => {
+    await openIssue('Fix the login page');
+
+    host!.press(of('bry-button', 'Ask about this issue')!);
+    await host!.waitFor(() => host!.asks.length === 1, { what: 'the draft' });
+
+    expect(host!.asks).toEqual([
+      { text: 'What should happen next on “Fix the login page”?', target: { collection: 'issues', id: 'issue_login', title: 'Fix the login page' } },
+    ]);
+    expect(host!.calls.filter(call => call.tool !== 'list_issues' && call.tool !== 'get_issue' && call.tool !== 'list_labels')).toEqual([]);
+  });
+
+  test('an issue opened on a project it doesn’t belong to still opens, and says which project it does', async () => {
+    host = FakeHost.start({
+      entry: board,
+      manifest,
+      fixtures: { ...FIXTURES, issues: [{ ...FIXTURES.issues[0], project: 'project_web' }] },
+      directory: { projects: [{ id: 'project_web', name: 'Website refresh' }] },
+      context: { selection: { kind: 'item', id: 'issue_login' } },
+    });
+    await host.mounted();
+    await host.waitFor(() => host!.byText('This issue belongs to Website refresh.'), { what: 'where it belongs' });
+
+    expect(of('bry-input', 'Title')!.props.value).toBe('Fix the login page');
+    host.stop();
+
+    // One that belongs here says nothing of the sort.
+    host = FakeHost.start({
+      entry: board,
+      manifest,
+      fixtures: { ...FIXTURES, issues: [{ ...FIXTURES.issues[0], project: 'project_1' }] },
+      context: { selection: { kind: 'item', id: 'issue_login' } },
+    });
+    await host.mounted();
+    await host.waitFor(() => of('bry-input', 'Title')?.props.value === 'Fix the login page', { what: 'the issue' });
+    expect(host.findAll(node => String(node.props.text ?? '').startsWith('This issue belongs'))).toEqual([]);
+  });
+
   test('the labels picker lists this instance’s labels, ticks save, and New label makes one and adds it', async () => {
     await openIssue('Fix the login page');
 
