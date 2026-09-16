@@ -57,7 +57,16 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
     const took = Date.now() - started;
 
     expect(STATUSES.map(status => host!.findAll(node => node.type === 'bry-board-column')[STATUSES.indexOf(status)]!.props.count)).toEqual([350, 100, 50]);
-    expect(host.calls.filter(call => call.tool === 'list_issues').map(call => call.input)).toEqual([{ limit: 40 }, { limit: 200, cursor: '40' }, { limit: 200, cursor: '240' }, { limit: 200, cursor: '440' }]);
+    // Each column's first 40 at once, then the rest of each column: To do's 310 in two pages, Doing's 60 in one; Done's 50 needs one more.
+    const reads = host.calls.filter(call => call.tool === 'list_issues').map(call => call.input as { filter: { status: string }; limit: number; cursor?: string });
+
+    expect(reads.slice(0, 3)).toEqual([
+      { filter: { status: 'todo' }, limit: 40 },
+      { filter: { status: 'doing' }, limit: 40 },
+      { filter: { status: 'done' }, limit: 40 },
+    ]);
+    expect(reads.slice(3).every(read => read.limit === 200 && read.cursor)).toBe(true);
+    expect(reads.slice(3).map(read => read.filter.status).sort()).toEqual(['doing', 'done', 'todo', 'todo']);
     expect(host.findAll(node => node.type === 'bry-card')).toHaveLength(40 + 40 + 40);
     expect(host.tree.size).toBeLessThan(1_500);
     expect(titlesIn('To do').slice(0, 2)).toEqual(['Issue 0', 'Issue 1']);
@@ -79,7 +88,8 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
     await host.mounted();
     const drawn = () => host!.findAll(node => node.type === 'bry-board-column').reduce((sum, one) => sum + Number(one.props.count), 0);
 
-    await host.waitFor(() => drawn() === 40, { what: 'the first page, drawn', timeout: 5_000 });
+    // Each column's first 40 (Done has only 50), all in one tree, before any later page is read.
+    await host.waitFor(() => drawn() === 120, { what: 'every column’s first page, drawn', timeout: 5_000 });
 
     expect(host.findAll(node => node.type === 'bry-board')[0]!.props.loading).toBeUndefined();
     release();

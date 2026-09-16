@@ -66,7 +66,7 @@ function Screen() {
 /** A page of issues: the store's largest. */
 const PAGE = 200;
 
-/** The first page is small, so a long board opens as soon as a column's first cards can be drawn. */
+/** A column's first page: as many cards as it draws at once, so the board opens as soon as they're read. */
 const FIRST_PAGE = 40;
 
 /**
@@ -86,24 +86,44 @@ function useIssues() {
   const again = useRef(false);
   const readAll = useCallback(async () => {
     const mine = ++ticket.current;
-    const items: Issue[] = [];
-    let cursor: string | null = null;
+    const failed = (error: unknown) => {
+      if (mine === ticket.current) setState(previous => ({ ...previous, loading: false, error: error instanceof Error ? error : new Error(String(error)) }));
+    };
 
     try {
-      do {
-        const page: { items: Issue[]; nextCursor: string | null } = await data.list<Issue>('issues', { limit: cursor ? PAGE : FIRST_PAGE, ...(cursor ? { cursor } : {}) });
+      // Each column's first cards, all three at once, drawn in one go: that is the board opening.
+      const firsts = await Promise.all(
+        COLUMNS.map(column => data.list<Issue>('issues', { filter: { status: column.status }, limit: FIRST_PAGE })),
+      );
 
-        items.push(...page.items);
-        cursor = page.nextCursor;
+      if (mine !== ticket.current) return;
 
-        // The first page draws at once, and the rest join it as they arrive:
-        // the board opens without waiting for its last page.
-        if (cursor && mine === ticket.current) setState({ items: [...items], loading: true, error: null });
-      } while (cursor && mine === ticket.current);
+      const more = firsts.some(page => page.nextCursor);
 
-      if (mine === ticket.current) setState({ items, loading: false, error: null });
+      setState({ items: firsts.flatMap(page => page.items), loading: more, error: null });
+
+      if (!more) return;
+
+      // The rest of each column after that, the three in parallel, merged once.
+      const rests = await Promise.all(
+        COLUMNS.map(async (column, at) => {
+          const items: Issue[] = [];
+          let cursor = firsts[at]!.nextCursor;
+
+          while (cursor && mine === ticket.current) {
+            const page: { items: Issue[]; nextCursor: string | null } = await data.list<Issue>('issues', { filter: { status: column.status }, limit: PAGE, cursor });
+
+            items.push(...page.items);
+            cursor = page.nextCursor;
+          }
+
+          return items;
+        }),
+      );
+
+      if (mine === ticket.current) setState({ items: [...firsts.flatMap(page => page.items), ...rests.flat()], loading: false, error: null });
     } catch (error) {
-      if (mine === ticket.current) setState(previous => ({ ...previous, loading: false, error: error instanceof Error ? error : new Error(String(error)) }));
+      failed(error);
     }
   }, []);
   const refetch = useCallback((): Promise<void> => {

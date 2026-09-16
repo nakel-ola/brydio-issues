@@ -3,7 +3,7 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.11.1)
+## What it does (version 0.11.2)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
@@ -34,9 +34,9 @@ made with the Brydio SDK (`../brydio-sdk`).
   project the issue will belong to, and it can't be changed there.
 - A card's actions button (**⋯**, named "Actions for" the issue's title for a
   screen reader) opens a menu with **Delete**.
-- **Holds hundreds of issues.** It reads them page by page, drawing the first
-  page at once and adding the rest as they arrive, and each column says how
-  many it holds but draws only the cards around what is in view.
+- **Holds hundreds of issues.** It reads each column's first cards at once,
+  opens with those, then reads the rest of every column in parallel, and each
+  column draws only the cards around what is in view.
 - **Updates live.** An issue somebody else makes, moves or deletes, in another
   tab or through the assistant in a chat, shows on an open board without a
   reload.
