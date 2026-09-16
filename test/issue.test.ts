@@ -66,6 +66,8 @@ describe('the issue screen (A8-F01-S03)', () => {
 
     host!.press(of('bry-button', 'Back to the board')!);
     await host!.waitFor(() => of('bry-board'), { what: 'the board again' });
+    // Back closes the item with Brydio, which takes it out of the address.
+    await host!.waitFor(() => host!.received.some(message => message.method === 'ui/navigate' && JSON.stringify(message.params) === '{"to":{"kind":"item","id":null}}'), { what: 'the item to be closed' });
     expect(saves()).toEqual([]);
   });
 

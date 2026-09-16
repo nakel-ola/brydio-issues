@@ -24,9 +24,9 @@ import { IssueView } from './issue-view.tsx';
  * asks the person first, through Brydio, so the board doesn't ask again.
  *
  * Pressing a card opens the issue in the same tab: the board asks Brydio to
- * open the item (`ui/navigate`), and Brydio makes it the screen's selection,
- * which is what an address or a shared link would name. Back returns to the
- * board.
+ * open the item (`ui/navigate`), and Brydio makes it the screen's selection
+ * and puts it in the page's address, so the link can be shared and opens that
+ * issue. Back (the button, or the browser's) closes it again.
  */
 
 /** The project filter's values for every project, and for issues in none. Project ids are never these. */
@@ -53,7 +53,14 @@ function Screen() {
     setOpen(selected);
   }
 
-  return open ? <IssueView id={open} onBack={() => setOpen(null)} /> : <Board onOpen={setOpen} />;
+  // Back asks Brydio to close the item, which takes it out of the address too
+  // (G14); the board shows at once either way.
+  const back = () => {
+    setOpen(null);
+    void navigate({ kind: 'item', id: null }).catch(() => undefined);
+  };
+
+  return open ? <IssueView id={open} onBack={back} /> : <Board onOpen={setOpen} />;
 }
 
 /** A page of issues: the store's largest. */
