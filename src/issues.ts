@@ -27,13 +27,6 @@ export const COLUMNS: readonly { status: Status; title: string }[] = [
   { status: 'done', title: 'Done' },
 ];
 
-/** The status one column to the left or right, or null at the edge of the board. */
-export function neighbour(status: Status, step: -1 | 1): Status | null {
-  const at = COLUMNS.findIndex(column => column.status === status);
-
-  return COLUMNS[at + step]?.status ?? null;
-}
-
 /** An error in words a person can read on the board. */
 export function reason(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

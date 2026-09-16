@@ -3,18 +3,28 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.3.0)
+## What it does (version 0.4.0)
 
-- Shows a **board** with three columns: **To do**, **Doing** and **Done**.
-- Each issue is a **card** with its title, its labels, when it is due, and
-  two arrow buttons, **←** and **→**, that move it one column left or right.
+- Shows a **board** with three columns, **To do**, **Doing** and **Done**,
+  each with how many issues it holds.
+- Each issue is a **card** with its title, when it is due ("Due 3 Oct") and
+  its labels.
+- **Move a card** by dragging it to another column, or with the keyboard:
+  Space picks it up, the arrow keys move it, Space puts it down and Escape
+  puts it back. If the move doesn't go through, the card goes back.
 - **New issue** opens a small form: type a title, pick a due date if you want
   one, then **Add** (or press Enter).
-- A card's **⋯** menu has **Delete**.
+- A card's actions button (**⋯**, named "Actions for" the issue's title for a
+  screen reader) opens a menu with **Delete**.
+- **Updates live.** An issue somebody else makes, moves or deletes, in another
+  tab or through the assistant in a chat, shows on an open board without a
+  reload.
 - Every change asks the person first (Brydio shows an *Allow once* / *Don't
-  allow* card), then the board reloads. The board never asks a second time.
+  allow* card), and the board never asks a second time.
 - If something goes wrong (the person says no, or someone else moved the same
-  issue a moment earlier) a red line on the board says what happened.
+  issue a moment earlier), a red line on the board says what happened. In the
+  second case the board reads the issues again, so the next move starts from
+  where they are now.
 
 It keeps two kinds of record: **issues** (a title, a status, who it is
 assigned to, labels, a longer description, a due date and the project it
@@ -30,14 +40,12 @@ project's issues, and a new issue belongs to that project.
 
 Each of these waits on something in Brydio, listed in its gap log.
 
-- **Drag a card.** The arrows move it until Brydio's board component lands.
+- **Keep an order within a column.** An issue has no position, so a card
+  dropped higher or lower in its own column goes back where it was.
 - **Open a single issue.** The `issue` screen is a placeholder until a screen
   can open another.
-- **Update live.** If someone else changes an issue, the board shows it after
-  the next change you make, or when you open the tab again.
 - **Show assignees' faces.** An assignee is stored, but the board can't look
   up a member's name yet.
-- **Name the ⋯ button for a screen reader.** A button's name is its label.
 
 ## The files
 
@@ -46,8 +54,8 @@ Each of these waits on something in Brydio, listed in its gap log.
 | `.brydio/app.json` | The manifest: the app's name and version, its records, where it appears, its screens and what it asks Brydio for. |
 | `src/screens/board.tsx` | The board. |
 | `src/screens/issue.tsx` | The placeholder for one issue. |
-| `src/issues.ts` | What an issue is, and the order of the columns. |
-| `test/board.test.ts` | Runs the built board in a pretend Brydio with three sample issues, presses its buttons, and checks what it did. |
+| `src/issues.ts` | What an issue is, the order of the columns, and how a due date reads. |
+| `test/board.test.ts` | Runs the built board in a pretend Brydio with three sample issues, drops cards in other columns, changes issues as somebody else would, and checks what the board did. |
 
 ## Building and checking it
 

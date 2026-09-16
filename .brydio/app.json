@@ -1,6 +1,6 @@
 {
   "name": "issues",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "displayName": "Issues",
   "placements": [
     { "kind": "project-tab", "screen": "board", "label": "Issues", "icon": "kanban" },
@@ -34,5 +34,5 @@
     "board": { "entry": "screens/board.js" },
     "issue": { "entry": "screens/issue.js" }
   },
-  "grants": { "tools": ["*"], "collections": ["*"], "host": ["navigate", "message"] }
+  "grants": { "tools": ["*"], "collections": ["*"], "host": [] }
 }

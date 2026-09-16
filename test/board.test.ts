@@ -33,31 +33,36 @@ afterEach(() => {
 /** A card's title: the text in it, not a button that happens to say the same. */
 const titled = (title: string) => host!.findAll(node => node.type === 'bry-text' && node.props.text === title)[0];
 
-/** The column a card sits in, by the heading at the top of its stack: "Doing (1)" → "Doing". */
-function columnOf(title: string): string | undefined {
-  let node: TreeNode | undefined = titled(title);
+const boardNode = () => host!.findAll(node => node.type === 'bry-board')[0]!;
 
-  while (node) {
-    const heading = node.children.map(id => host!.tree.get(id)).find(child => child?.type === 'bry-heading');
+/** A column by its title. */
+const column = (title: string) => host!.findAll(node => node.type === 'bry-board-column' && node.props.title === title)[0]!;
 
-    if (heading && heading.props.level === 2) return String(heading.props.text).replace(/ \(\d+\)$/, '');
+/** The nearest ancestor of this type. */
+function above(node: TreeNode | undefined, type: string): TreeNode | undefined {
+  let at = node && host!.parentOf(node);
 
-    node = host!.parentOf(node);
-  }
+  while (at && at.type !== type) at = host!.parentOf(at);
 
-  return undefined;
+  return at;
 }
 
-/** The card holding this title, and its ← and → buttons. */
-function cardOf(title: string) {
-  let card = titled(title);
+/** The column a card sits in, by its title. */
+const columnOf = (title: string) => above(titled(title), 'bry-board-column')?.props.title;
 
-  while (card && card.type !== 'bry-card') card = host!.parentOf(card);
+/** The card holding this title. */
+const cardOf = (title: string) => above(titled(title), 'bry-card')!;
 
-  const buttons = host!.findAll(node => node.type === 'bry-button' && isInside(node, card!));
+/** A person dropping a card in a column, as Brydio's board raises it. */
+function drop(title: string, to: string, position = 0) {
+  const card = cardOf(title);
 
-  return { card: card!, left: buttons.find(one => one.props.label === '←'), right: buttons.find(one => one.props.label === '→') };
+  host!.event(boardNode().id, 'move', { card: card.id, from: above(card, 'bry-board-column')!.id, to: column(to).id, position });
+
+  return card;
 }
+
+const errorLine = () => host!.waitFor(() => host!.findAll(node => node.type === 'bry-text' && node.props.tone === 'danger')[0], { what: 'the error line' });
 
 function isInside(node: TreeNode, ancestor: TreeNode): boolean {
   for (let at = host!.parentOf(node); at; at = host!.parentOf(at)) if (at.id === ancestor.id) return true;
@@ -75,45 +80,108 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
 
 test('the manifest is one Brydio’s server accepts', () => {
   expect(validateManifest(manifest)).toMatchObject({ ok: true, problems: [] });
+  expect(manifest.version).toBe('0.4.0');
 });
 
 describe('the board', () => {
-  test('draws the three columns from the issues, each card in its status’s column', async () => {
+  test('draws Brydio’s board with three counted columns, each card in its status’s column, and watches the issues', async () => {
     await open();
 
-    expect(host!.findAll(node => node.type === 'bry-heading').map(node => node.props.text)).toEqual([
-      'Issues',
-      'To do (1)',
-      'Doing (1)',
-      'Done (1)',
+    expect(boardNode().props).toMatchObject({ label: 'Issues', cardSize: 'lg' });
+    // Loaded: Preact takes a false setting away rather than sending it.
+    expect(boardNode().props.loading).toBeUndefined();
+    expect(host!.findAll(node => node.type === 'bry-board-column').map(node => [node.props.title, node.props.count, node.props.empty])).toEqual([
+      ['To do', 1, 'Nothing here.'],
+      ['Doing', 1, 'Nothing here.'],
+      ['Done', 1, 'Nothing here.'],
     ]);
     expect(columnOf('Fix the login page')).toBe('To do');
     expect(columnOf('Export to CSV')).toBe('Doing');
     expect(columnOf('Write the help page')).toBe('Done');
     expect(host!.calls[0]).toMatchObject({ tool: 'list_issues', input: { limit: 200 } });
-
-    // A card can only move towards a column that exists.
-    expect(cardOf('Fix the login page')).toMatchObject({ left: undefined, right: { type: 'bry-button' } });
-    expect(cardOf('Write the help page').right).toBeUndefined();
+    expect(host!.watching).toEqual(['issues']);
+    // No arrows: the board's own drag and keyboard move a card.
+    expect(host!.findAll(node => node.type === 'bry-button' && ['←', '→'].includes(String(node.props.label)))).toEqual([]);
     expect(host!.refusals).toEqual([]);
   });
 
-  test('→ moves a card with update_issue { id, version, status }, then draws it in the next column', async () => {
+  test('a card dropped in another column is written with update_issue { id, version, status }, and stays there', async () => {
     await open();
 
-    host!.press(cardOf('Fix the login page').right!);
+    drop('Fix the login page', 'Doing', 1);
     await host!.waitFor(() => columnOf('Fix the login page') === 'Doing', { what: 'the card to move' });
 
-    expect(host!.calls.map(call => call.tool)).toEqual(['list_issues', 'update_issue', 'list_issues']);
-    expect(host!.calls[1]).toMatchObject({ input: { id: 'issue_login', version: 1, status: 'doing' }, asked: 'allow' });
-    expect(host!.byText('Doing (2)')).toBeDefined();
+    expect(host!.calls.filter(call => call.tool !== 'list_issues').map(call => [call.tool, call.input, call.asked])).toEqual([
+      ['update_issue', { id: 'issue_login', version: 1, status: 'doing' }, 'allow'],
+    ]);
+    expect(column('Doing').props.count).toBe(2);
+    expect(column('To do').props.count).toBe(0);
     expect(host!.store!.records('issues').find(issue => issue.id === 'issue_login')).toMatchObject({ status: 'doing', version: 2 });
+    // Confirmed by drawing it there, never refused.
+    expect(boardNode().props.settled).toBeUndefined();
 
     // And back again, from the version it is at now.
-    host!.press(cardOf('Fix the login page').left!);
+    drop('Fix the login page', 'To do');
     await host!.waitFor(() => columnOf('Fix the login page') === 'To do', { what: 'the card to move back' });
 
-    expect(host!.calls[3]).toMatchObject({ tool: 'update_issue', input: { id: 'issue_login', version: 2, status: 'todo' } });
+    expect(host!.calls.filter(call => call.tool === 'update_issue').at(-1)).toMatchObject({ input: { id: 'issue_login', version: 2, status: 'todo' } });
+    expect(boardNode().props.settled).toBeUndefined();
+    expect(host!.refusals).toEqual([]);
+  });
+
+  test('a move the person doesn’t allow puts the card back and says why on the error line', async () => {
+    await open({ asks: 'deny' });
+
+    const card = drop('Export to CSV', 'Done');
+    const line = await errorLine();
+
+    expect(line.props.text).toBe('Couldn’t move “Export to CSV”. The person didn’t allow it.');
+    await host!.waitFor(() => boardNode().props.settled === card.id, { what: 'the card to be sent back' });
+    expect(columnOf('Export to CSV')).toBe('Doing');
+    expect(host!.store!.records('issues').find(issue => issue.id === 'issue_export')).toMatchObject({ status: 'doing', version: 1 });
+  });
+
+  test('a move within its own column is sent back without a call', async () => {
+    await open();
+
+    const card = drop('Export to CSV', 'Doing');
+
+    await host!.waitFor(() => boardNode().props.settled === card.id, { what: 'the card to be sent back' });
+    expect(host!.calls.map(call => call.tool)).toEqual(['list_issues']);
+  });
+
+  test('a move from an old version is refused as stale, sent back, and the board reads the issues again', async () => {
+    await open();
+
+    // Somebody else moves it first, and the card is dropped before the board hears.
+    host!.store!.put('issues', { id: 'issue_login', status: 'done' });
+
+    const card = drop('Fix the login page', 'Doing');
+    const line = await errorLine();
+
+    expect(line.props.text).toStartWith('Couldn’t move “Fix the login page”. This issue changed since you read it.');
+    expect(host!.calls.find(call => call.tool === 'update_issue')).toMatchObject({ input: { id: 'issue_login', version: 1, status: 'doing' } });
+    await host!.waitFor(() => columnOf('Fix the login page') === 'Done', { what: 'the board to catch up' });
+    await host!.waitFor(() => boardNode().props.settled === card.id, { what: 'the card to be sent back' });
+  });
+
+  test('an issue somebody else makes, moves or deletes shows on the open board without a press', async () => {
+    await open();
+
+    const reads = () => host!.calls.filter(call => call.tool === 'list_issues').length;
+
+    host!.store!.put('issues', { title: 'Made in a chat', status: 'todo' });
+    await host!.waitFor(() => columnOf('Made in a chat') === 'To do', { what: 'the new issue' });
+    expect(column('To do').props.count).toBe(2);
+
+    host!.store!.put('issues', { id: 'issue_export', status: 'done' });
+    await host!.waitFor(() => columnOf('Export to CSV') === 'Done', { what: 'the moved issue' });
+
+    host!.store!.remove('issues', 'issue_docs');
+    await host!.waitFor(() => !titled('Write the help page'), { what: 'the deleted issue to go' });
+
+    expect(reads()).toBe(4);
+    expect(host!.calls.filter(call => call.tool !== 'list_issues')).toEqual([]);
     expect(host!.refusals).toEqual([]);
   });
 
@@ -132,10 +200,9 @@ describe('the board', () => {
     host!.event(field.id, 'change', { value: 'Fix the door' });
     await host!.waitFor(() => !add().props.disabled, { what: 'Add to be pressable' });
     host!.press(add());
-    await host!.waitFor(() => host!.byText('To do (2)'), { what: 'the new issue' });
+    await host!.waitFor(() => columnOf('Fix the door') === 'To do', { what: 'the new issue' });
 
     expect(host!.calls[1]).toMatchObject({ tool: 'create_issue', input: { title: 'Fix the door', status: 'todo' } });
-    expect(columnOf('Fix the door')).toBe('To do');
     // The form closes once the issue is made.
     await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input').length === 0, { what: 'the form to close' });
     expect(host!.refusals).toEqual([]);
@@ -151,7 +218,7 @@ describe('the board', () => {
     host!.event(field.id, 'change', { value: 'Export to PDF' });
     await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input')[0]?.props.value === 'Export to PDF', { what: 'the typed title' });
     host!.event(field.id, 'submit', { value: 'Export to PDF' });
-    await host!.waitFor(() => host!.byText('To do (2)'), { what: 'the new issue' });
+    await host!.waitFor(() => column('To do').props.count === 2, { what: 'the new issue' });
 
     host!.press(host!.byText('New issue')!);
     field = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input')[0], { what: 'the title field again' });
@@ -162,19 +229,19 @@ describe('the board', () => {
     expect(host!.calls.filter(call => call.tool === 'create_issue')).toHaveLength(1);
   });
 
-  test('a card shows its labels', async () => {
+  test('a card shows its labels as badges', async () => {
     await open();
 
-    const badge = host!.findAll(node => node.type === 'bry-badge' && node.props.text === 'data')[0];
+    const badge = host!.findAll(node => node.type === 'bry-badge' && node.props.text === 'data')[0]!;
 
-    expect(badge).toBeDefined();
-    expect(cardOf('Export to CSV').card.id).toBe(host!.parentOf(host!.parentOf(host!.parentOf(badge!)!)!)!.id);
+    expect(badge.props.tone).toBe('neutral');
+    expect(isInside(badge, cardOf('Export to CSV'))).toBe(true);
   });
 
   test('a due date picked in the form is sent with create_issue, and a card says when it is due', async () => {
     await open();
 
-    expect(host!.byText('Due 3 Oct')).toBeDefined();
+    expect(isInside(host!.byText('Due 3 Oct')!, cardOf('Write the help page'))).toBe(true);
     expect(host!.findAll(node => node.type === 'bry-text' && String(node.props.text).startsWith('Due '))).toHaveLength(1);
 
     host!.press(host!.byText('New issue')!);
@@ -194,42 +261,20 @@ describe('the board', () => {
     });
   });
 
-  test('a card’s menu deletes the issue with delete_issue, asking through Brydio', async () => {
+  test('a card’s actions button is named for the issue, and its menu deletes it with delete_issue', async () => {
     await open();
 
-    const menu = host!.findAll(node => node.type === 'bry-menu' && isInside(node, cardOf('Export to CSV').card))[0]!;
+    const menu = host!.findAll(node => node.type === 'bry-menu' && isInside(node, cardOf('Export to CSV')))[0]!;
+    const button = host!.tree.get(menu.children[0]!)!;
 
+    expect(button.props).toMatchObject({ label: 'Actions for Export to CSV', icon: 'more', hideLabel: true, variant: 'ghost' });
     expect(menu.props.items).toEqual([{ id: 'delete', label: 'Delete', icon: 'trash', tone: 'danger' }]);
     host!.event(menu.id, 'select', { id: 'delete' });
-    await host!.waitFor(() => !host!.byText('Export to CSV'), { what: 'the card to go' });
+    await host!.waitFor(() => !titled('Export to CSV'), { what: 'the card to go' });
 
     expect(host!.calls.find(call => call.tool === 'delete_issue')).toMatchObject({ input: { id: 'issue_export' }, asked: 'allow' });
-    expect(host!.byText('Doing (0)')).toBeDefined();
+    expect(column('Doing').props.count).toBe(0);
     expect(host!.refusals).toEqual([]);
-  });
-
-  test('a write that fails leaves the board as it was and says why on an error line', async () => {
-    await open({ asks: 'deny' });
-
-    host!.press(cardOf('Export to CSV').right!);
-
-    const line = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-text' && node.props.tone === 'danger')[0], { what: 'the error line' });
-
-    expect(line.props.text).toBe('Couldn’t move “Export to CSV”. The person didn’t allow it.');
-    expect(columnOf('Export to CSV')).toBe('Doing');
-  });
-
-  test('a move from an old version is refused as stale, and the board reads the issues again', async () => {
-    await open();
-
-    // Somebody else moves it first.
-    host!.store!.tools().update_issue!({ id: 'issue_login', version: 1, status: 'done' });
-    host!.press(cardOf('Fix the login page').right!);
-
-    const line = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-text' && node.props.tone === 'danger')[0], { what: 'the error line' });
-
-    expect(line.props.text).toStartWith('Couldn’t move “Fix the login page”. This issue changed since you read it.');
-    await host!.waitFor(() => columnOf('Fix the login page') === 'Done', { what: 'the board to catch up' });
   });
 
   test('a list that cannot be read says so', async () => {
