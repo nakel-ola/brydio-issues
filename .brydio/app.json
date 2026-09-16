@@ -1,6 +1,6 @@
 {
   "name": "issues",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "displayName": "Issues",
   "placements": [
     { "kind": "project-tab", "screen": "board", "label": "Issues", "icon": "kanban" },
@@ -26,6 +26,9 @@
       "label": "label"
     }
   },
+  "migrations": [
+    { "version": "0.3.0", "steps": [{ "op": "add", "collection": "issues", "field": "due" }] }
+  ],
   "tools": { "generated": true, "custom": [] },
   "screens": {
     "board": { "entry": "screens/board.js" },
