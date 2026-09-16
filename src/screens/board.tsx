@@ -92,6 +92,8 @@ function useIssues() {
   const again = useRef(false);
   // Whether the board has been read once: reading again after that draws once, when everything is in.
   const opened = useRef(false);
+  // The watch starts once the first cards are drawn, so nothing else waits in line before them.
+  const [watching, setWatching] = useState(false);
   const readAll = useCallback(async () => {
     const mine = ++ticket.current;
     const opening = !opened.current;
@@ -100,50 +102,59 @@ function useIssues() {
     };
 
     try {
-      // Opening, each column's first cards are drawn as soon as that column's read is back, not
-      // after all three: the first cards drawn are the board opening. Read again later, the whole
-      // of each column is read first, so the board never shrinks to its first pages meanwhile.
-      const firsts: ({ items: Issue[]; nextCursor: string | null } | undefined)[] = [];
+      // A whole column, page by page, from the top.
+      const whole = async (status: Status): Promise<Issue[]> => {
+        const items: Issue[] = [];
+        let cursor: string | null | undefined;
 
-      await Promise.all(
-        COLUMNS.map(async (column, at) => {
-          const page = await data.list<Issue>('issues', { filter: { status: column.status }, sort: BY_RANK, limit: opening ? FIRST_PAGE : PAGE });
+        do {
+          const page: { items: Issue[]; nextCursor: string | null } = await data.list<Issue>('issues', { filter: { status }, sort: BY_RANK, limit: PAGE, ...(cursor ? { cursor } : {}) });
 
-          firsts[at] = page;
-          if (opening && mine === ticket.current) setState({ items: firsts.flatMap(one => one?.items ?? []), loading: true, error: null });
-        }),
-      );
+          items.push(...page.items);
+          cursor = page.nextCursor;
+        } while (cursor && mine === ticket.current);
 
-      if (mine !== ticket.current) return;
+        return items;
+      };
+      const columns: Issue[][] = COLUMNS.map(() => []);
+      let waiting = COLUMNS.length;
+      const draw = () => setState({ items: columns.flat(), loading: waiting > 0, error: null });
 
-      opened.current = true;
+      if (!opened.current) {
+        // Opening: To do's first cards, read alone and drawn at once, are the board opening. Only
+        // then does anything else start: the watch, and every column read whole, To do again from
+        // its top so nothing changed meanwhile is missed. Each column joins the board when it is in.
+        const first = await data.list<Issue>('issues', { filter: { status: 'todo' }, sort: BY_RANK, limit: FIRST_PAGE });
 
-      const more = firsts.some(page => page!.nextCursor);
+        if (mine !== ticket.current) return;
 
-      if (!more) {
-        setState({ items: firsts.flatMap(page => page!.items), loading: false, error: null });
+        columns[0] = first.items;
+        opened.current = true;
+        draw();
+        setWatching(true);
+        await Promise.all(
+          COLUMNS.map(async (column, at) => {
+            const items = await whole(column.status);
+
+            if (mine !== ticket.current) return;
+
+            columns[at] = items;
+            waiting -= 1;
+            draw();
+          }),
+        );
 
         return;
       }
 
-      // The rest of each column after that, the three in parallel, merged once.
-      const rests = await Promise.all(
-        COLUMNS.map(async (column, at) => {
-          const items: Issue[] = [];
-          let cursor = firsts[at]!.nextCursor;
+      // Read again: every column whole, in parallel, drawn once, so the board never shrinks meanwhile.
+      const read = await Promise.all(COLUMNS.map(column => whole(column.status)));
 
-          while (cursor && mine === ticket.current) {
-            const page: { items: Issue[]; nextCursor: string | null } = await data.list<Issue>('issues', { filter: { status: column.status }, sort: BY_RANK, limit: PAGE, cursor });
+      if (mine !== ticket.current) return;
 
-            items.push(...page.items);
-            cursor = page.nextCursor;
-          }
-
-          return items;
-        }),
-      );
-
-      if (mine === ticket.current) setState({ items: [...firsts.flatMap(page => page!.items), ...rests.flat()], loading: false, error: null });
+      read.forEach((items, at) => (columns[at] = items));
+      waiting = 0;
+      draw();
     } catch (error) {
       failed(error);
     }
@@ -170,7 +181,7 @@ function useIssues() {
   useLayoutEffect(() => {
     void refetch();
   }, [refetch]);
-  useWatch('issues', () => void refetch());
+  useWatch(watching ? 'issues' : null, () => void refetch());
 
   return { ...state, refetch };
 }
@@ -194,12 +205,12 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
 
   // Loaded once anything has been read: a later page, or a read again, keeps the board drawn.
   if (!list.loading || list.items.length) loaded.current = true;
-  // The first cards drawn carry only their titles and due dates; names, badges and menus join on
-  // the next update, so nothing but the cards themselves stands between the tab and first paint.
+  // The first cards drawn carry only their titles and due dates; names, badges and menus join once
+  // every column is in (names asked once for all), so only the cards stand between the tab and first paint.
   const [dressed, setDressed] = useState(false);
 
   useEffect(() => {
-    if (!dressed && loaded.current) setDressed(true);
+    if (!dressed && !list.loading) setDressed(true);
   });
 
   // Placed without a project (the workspace sidebar), the board holds every
@@ -208,7 +219,7 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
   const everyProject = !here;
   const [project, setProject] = useState(ALL_PROJECTS);
   // Across the workspace, every card's project; in a project, its own, for the form (A2-F06-S03).
-  const projects = useProjects(everyProject ? (dressed ? list.items.map(issue => issue.project) : []) : [here]);
+  const projects = useProjects(dressed ? (everyProject ? list.items.map(issue => issue.project) : [here]) : []);
   const issues = everyProject && project !== ALL_PROJECTS ? list.items.filter(issue => (issue.project ?? NO_PROJECT) === project) : list.items;
   // Names and initials for the people the cards are assigned to, asked once each.
   const people = useMembers(dressed ? issues.map(issue => issue.assignee) : []);

@@ -1,6 +1,6 @@
 {
   "name": "issues",
-  "version": "0.11.4",
+  "version": "0.11.5",
   "displayName": "Issues",
   "summary": "A board of your project's issues, which the assistant can work on too.",
   "placements": [

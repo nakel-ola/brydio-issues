@@ -57,16 +57,12 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
     const took = Date.now() - started;
 
     expect(STATUSES.map(status => host!.findAll(node => node.type === 'bry-board-column')[STATUSES.indexOf(status)]!.props.count)).toEqual([350, 100, 50]);
-    // Each column's first 12 at once, then the rest of each column: To do's 338 in two pages, Doing's 88 in one, Done's 38 in one.
+    // To do's first 12 alone, then each column whole from its top: To do's 350 in two pages, Doing's 100 and Done's 50 in one each.
     const reads = host.calls.filter(call => call.tool === 'list_issues').map(call => call.input as { filter: { status: string }; sort: unknown; limit: number; cursor?: string });
 
-    expect(reads.slice(0, 3)).toEqual([
-      { filter: { status: 'todo' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 },
-      { filter: { status: 'doing' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 },
-      { filter: { status: 'done' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 },
-    ]);
-    expect(reads.slice(3).every(read => read.limit === 200 && read.cursor && JSON.stringify(read.sort) === '{"field":"rank","dir":"asc"}')).toBe(true);
-    expect(reads.slice(3).map(read => read.filter.status).sort()).toEqual(['doing', 'done', 'todo', 'todo']);
+    expect(reads[0]).toEqual({ filter: { status: 'todo' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 });
+    expect(reads.slice(1).every(read => read.limit === 200 && JSON.stringify(read.sort) === '{"field":"rank","dir":"asc"}')).toBe(true);
+    expect(reads.slice(1).map(read => `${read.filter.status}${read.cursor ? ' after' : ''}`).sort()).toEqual(['doing', 'done', 'todo', 'todo after']);
     expect(host.findAll(node => node.type === 'bry-card')).toHaveLength(40 + 40 + 40);
     expect(host.tree.size).toBeLessThan(1_500);
     expect(titlesIn('To do').slice(0, 2)).toEqual(['Issue 0', 'Issue 1']);
@@ -88,7 +84,7 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
         list_issues: async input => {
           const read = input as { filter: { status: string }; cursor?: string };
 
-          if (read.cursor || read.filter.status !== 'todo') await held;
+          if ((read as unknown as { limit: number }).limit !== 12) await held;
 
           return pages(input);
         },
@@ -96,10 +92,12 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
     });
     await host.mounted();
 
-    // To do's first 12, drawn alone: the first cards on the screen don't wait for the other columns.
+    // To do's first 12, drawn alone: nothing else is read, or watched, before them.
     await host.waitFor(() => column('To do')?.props.count === 12, { what: 'To do’s first page, drawn', timeout: 5_000 });
 
     expect(column('Doing').props.count).toBe(0);
+    expect(host.calls.map(call => (call.input as { limit: number }).limit)).toEqual([12, 200, 200, 200].slice(0, host.calls.length));
+    expect(JSON.stringify(host.received.slice(0, host.received.findIndex(message => JSON.stringify(message).includes('"bry-card"'))))).not.toContain('data/subscribe');
     expect(host.findAll(node => node.type === 'bry-board')[0]!.props.loading).toBeUndefined();
 
     // The first tree with cards in it has their titles, and no menus, avatars or badges yet.
@@ -110,11 +108,11 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
     expect(first).not.toContain('bry-menu');
     expect(first).not.toContain('bry-badge');
     expect(first).not.toContain('bry-avatar');
-    // They join on the next update.
-    await host.waitFor(() => host!.findAll(node => node.type === 'bry-menu').length === 12, { what: 'the cards’ menus', timeout: 5_000 });
 
     release();
     await host.waitFor(() => column('To do')?.props.count === 350, { what: 'all 500', timeout: 5_000 });
+    // They join once every column is in.
+    await host.waitFor(() => host!.findAll(node => node.type === 'bry-menu').length === 40 + 40 + 40, { what: 'the cards’ menus', timeout: 5_000 });
     expect(column('Done').props.count).toBe(50);
   });
 
