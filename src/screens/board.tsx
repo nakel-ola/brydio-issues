@@ -74,9 +74,11 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
 
   // Placed without a project (the workspace sidebar), the board holds every
   // project's issues: each card says which, and a filter narrows by hand.
-  const everyProject = !useHost().placement.projectId;
+  const here = useHost().placement.projectId;
+  const everyProject = !here;
   const [project, setProject] = useState(ALL_PROJECTS);
-  const projects = useProjects(everyProject ? list.items.map(issue => issue.project) : []);
+  // Across the workspace, every card's project; in a project, its own, for the form (A2-F06-S03).
+  const projects = useProjects(everyProject ? list.items.map(issue => issue.project) : [here]);
   const issues = everyProject && project !== ALL_PROJECTS ? list.items.filter(issue => (issue.project ?? NO_PROJECT) === project) : list.items;
   // Names and initials for the people the cards are assigned to, asked once each.
   const people = useMembers(issues.map(issue => issue.assignee));
@@ -145,6 +147,10 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
               onSubmit={() => void add()}
             />
             <bry-date label="Due" placeholder="No due date" value={due} disabled={busy} onChange={event => setDue(event.detail.value)} />
+            {here && (
+              // Brydio links an issue made here to this project; shown, and not for changing.
+              <bry-input label="Project" value={projects.get(here)?.name ?? 'This project'} disabled />
+            )}
             <bry-button label="Add" variant="primary" working={busy} disabled={!draft.trim()} onPress={() => void add()} />
             <bry-button label="Cancel" variant="ghost" disabled={busy} onPress={close} />
           </bry-stack>

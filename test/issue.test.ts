@@ -137,7 +137,7 @@ describe('the issue screen (A8-F01-S03)', () => {
     expect(avatarIn('Fix the login page').props).toEqual({ name: 'Ada Lovelace', size: 'sm' });
     expect(avatarIn('Export to CSV').props.name).toBe('Bo Diddley');
     // Asked once, for both people, not once per card.
-    expect(host.namesAsked).toEqual([{ kind: 'members', ids: ['user_ada', 'user_bo'] }]);
+    expect(host.namesAsked.filter(one => one.kind === 'members')).toEqual([{ kind: 'members', ids: ['user_ada', 'user_bo'] }]);
 
     host.press(cardTitled('Fix the login page'));
     await host.waitFor(() => of('bry-select', 'Assignee')?.props.options, { what: 'the assignee picker' });

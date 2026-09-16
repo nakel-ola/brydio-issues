@@ -3,7 +3,7 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.8.0)
+## What it does (version 0.8.1)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
@@ -23,7 +23,8 @@ made with the Brydio SDK (`../brydio-sdk`).
   else changed the issue meanwhile, the save is refused with "Someone else
   changed this; reload to see", and **Reload** shows their change.
 - **New issue** opens a small form: type a title, pick a due date if you want
-  one, then **Add** (or press Enter).
+  one, then **Add** (or press Enter). In a project, the form shows the
+  project the issue will belong to, and it can't be changed there.
 - A card's actions button (**⋯**, named "Actions for" the issue's title for a
   screen reader) opens a menu with **Delete**.
 - **Updates live.** An issue somebody else makes, moves or deletes, in another

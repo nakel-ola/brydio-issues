@@ -80,7 +80,7 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
 
 test('the manifest is one Brydio’s server accepts', () => {
   expect(validateManifest(manifest)).toMatchObject({ ok: true, problems: [] });
-  expect(manifest.version).toBe('0.8.0');
+  expect(manifest.version).toBe('0.8.1');
 });
 
 describe('the board', () => {
@@ -290,6 +290,26 @@ describe('the board', () => {
     expect(host!.refusals).toEqual([]);
   });
 
+  test('in a project, the form shows the project, filled in and not editable, and the issue made there is its (A2-F06-S03)', async () => {
+    await open({ directory: { projects: [{ id: 'project_1', name: 'Website' }] } });
+
+    host!.press(host!.byText('New issue')!);
+
+    const project = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input' && node.props.label === 'Project' && node.props.value === 'Website')[0], { what: 'the project field' });
+
+    expect(project.props).toEqual({ label: 'Project', value: 'Website', disabled: true });
+    expect(host!.namesAsked).toEqual([{ kind: 'projects', ids: ['project_1'] }]);
+    expect(() => host!.raise('bry-input', project, 'change', { value: 'Elsewhere' })).not.toThrow();
+    // Nothing the form sends names a project: Brydio links it to the placement's.
+    const title = host!.findAll(node => node.type === 'bry-input' && node.props.label === 'Title')[0]!;
+
+    host!.event(title.id, 'change', { value: 'Linked here' });
+    await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input' && node.props.label === 'Title')[0]?.props.value === 'Linked here');
+    host!.event(title.id, 'submit', { value: 'Linked here' });
+    await host!.waitFor(() => host!.calls.some(call => call.tool === 'create_issue'), { what: 'the create' });
+    expect(host!.calls.find(call => call.tool === 'create_issue')!.input).not.toHaveProperty('project');
+  });
+
   test('Enter in the title field adds the issue too, and Cancel closes the form without a call', async () => {
     await open();
 
@@ -398,11 +418,11 @@ describe('the board', () => {
     await host.waitFor(() => titled('Export to CSV') && titled('Fix the login page'), { what: 'every issue again' });
   });
 
-  test('placed in a project, it shows no project filter and asks for no project names', async () => {
+  test('placed in a project, it shows no project filter and asks only for its own project’s name', async () => {
     await open();
 
     expect(host!.findAll(node => node.type === 'bry-select' && node.props.label === 'Project')).toEqual([]);
-    expect(host!.namesAsked.filter(one => one.kind === 'projects')).toEqual([]);
+    expect(host!.namesAsked.filter(one => one.kind === 'projects')).toEqual([{ kind: 'projects', ids: ['project_1'] }]);
   });
 
   test('a list that cannot be read says so', async () => {
