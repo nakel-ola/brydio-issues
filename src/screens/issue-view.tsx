@@ -1,4 +1,4 @@
-import { ToolError, tools } from '@brydio/app';
+import { ToolError, data, tools } from '@brydio/app';
 import { useEffect, useList, useMemberList, useMembers, useRef, useState } from '@brydio/app/preact';
 
 import { COLUMNS, dueText, reason, type Issue, type Status } from '../issues.ts';
@@ -55,7 +55,8 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
 
   const load = async () => {
     try {
-      const read = await tools.call<Issue>('get_issue', { id });
+      // A read, counted as one: opening issues never spends the budget for saving them.
+      const read = await data.get<Issue>('issues', id);
 
       version.current = read.version;
       setIssue(read);

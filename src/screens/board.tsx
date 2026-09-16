@@ -92,6 +92,10 @@ function useIssues() {
 
         items.push(...page.items);
         cursor = page.nextCursor;
+
+        // The first page draws at once, and the rest join it as they arrive:
+        // the board opens without waiting for its last page.
+        if (cursor && mine === ticket.current) setState({ items: [...items], loading: true, error: null });
       } while (cursor && mine === ticket.current);
 
       if (mine === ticket.current) setState({ items, loading: false, error: null });
@@ -143,7 +147,8 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
   // Whether the list has been read once: later reads keep the board drawn.
   const loaded = useRef(false);
 
-  if (!list.loading) loaded.current = true;
+  // Loaded once anything has been read: a later page, or a read again, keeps the board drawn.
+  if (!list.loading || list.items.length) loaded.current = true;
 
   // Placed without a project (the workspace sidebar), the board holds every
   // project's issues: each card says which, and a filter narrows by hand.

@@ -1,5 +1,5 @@
 import { build } from '@brydio/cli';
-import { FakeHost } from '@brydio/fake-host';
+import { FakeHost, FixtureStore } from '@brydio/fake-host';
 import { afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -63,6 +63,27 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
     expect(titlesIn('To do').slice(0, 2)).toEqual(['Issue 0', 'Issue 1']);
     // The fake host is not the browser; this only keeps a regression from hiding here.
     expect(took).toBeLessThan(3_000);
+  });
+
+  test('draws the first page before the rest have been read', async () => {
+    const pages = new FixtureStore(manifest, { issues: MANY }).tools().list_issues!;
+    let release: () => void = () => {};
+    const held = new Promise<void>(resolve => (release = resolve));
+
+    host = FakeHost.start({
+      entry: board,
+      manifest,
+      // The same pages as the store, but the ones after the first wait for the test.
+      tools: { list_issues: async input => (input.cursor ? (await held, pages(input)) : pages(input)) },
+    });
+    await host.mounted();
+    const drawn = () => host!.findAll(node => node.type === 'bry-board-column').reduce((sum, one) => sum + Number(one.props.count), 0);
+
+    await host.waitFor(() => drawn() === 200, { what: 'the first page, drawn', timeout: 5_000 });
+
+    expect(host.findAll(node => node.type === 'bry-board')[0]!.props.loading).toBeUndefined();
+    release();
+    await host.waitFor(() => column('To do')?.props.count === 350, { what: 'all 500', timeout: 5_000 });
   });
 
   test('a column’s range draws the cards it asks for, from start, and a move there still writes one rank', async () => {
