@@ -31,6 +31,20 @@ interface Label {
 
 export const STALE = 'Someone else changed this; reload to see.';
 
+/** Who last changed a record and through which door, as Brydio keeps them beside it. */
+type Changed = { updatedBy?: string | null; updatedOrigin?: 'screen' | 'assistant' | 'migration' | null; updatedAt?: string };
+
+/** "Changed by Ada Lovelace from the board, 3 Oct", in the words of the door it came through. */
+export function changedText(record: Changed, name: string | undefined, locale = 'en-GB'): string | null {
+  if (!record.updatedBy && !record.updatedOrigin) return null;
+
+  const who = name ?? 'someone';
+  const how = { screen: ' on the board', assistant: ' through the assistant', migration: ' when Issues was upgraded' }[record.updatedOrigin ?? 'screen'] ?? '';
+  const when = record.updatedAt ? `, ${new Date(record.updatedAt).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}` : '';
+
+  return record.updatedOrigin === 'migration' ? `Last changed${how}${when}.` : `Last changed by ${who}${how}${when}.`;
+}
+
 /** The picker's value for nobody: a member id is never empty. */
 const UNASSIGNED = 'unassigned';
 
@@ -47,7 +61,7 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
   // Everyone this Issues may assign to, as Brydio lists them, and the assignee's own name
   // (someone no longer listed, such as a person who left the project, still shows).
   const directory = useMemberList();
-  const assigned = useMembers([issue?.assignee]);
+  const assigned = useMembers([issue?.assignee, (issue as Changed | null)?.updatedBy]);
   const people = new Map([...assigned, ...directory.members.map(person => [person.id, person] as const)]);
   // An issue opened here from another project (a link) still opens, and says where it belongs (A2-F06-S02).
   const here = useHost().placement.projectId;
@@ -209,6 +223,9 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
         />
         {issue.due && <bry-text tone="muted" size="sm" text={dueText(issue.due)} />}
       </bry-stack>
+      {changedText(issue as Changed, people.get((issue as Changed).updatedBy ?? '')?.name) && (
+        <bry-text tone="muted" size="sm" text={changedText(issue as Changed, people.get((issue as Changed).updatedBy ?? '')?.name)!} />
+      )}
       <bry-stack direction="row" gap="2" align="end">
         {issue.assignee && people.get(issue.assignee) && <bry-avatar name={people.get(issue.assignee)!.name} />}
         <bry-select
@@ -216,7 +233,12 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
           value={issue.assignee ?? UNASSIGNED}
           options={[
             { value: UNASSIGNED, label: 'Unassigned' },
-            ...[...people.values()].sort((a, b) => a.name.localeCompare(b.name)).map(person => ({ value: person.id, label: person.name })),
+            // Each person with their initials beside their name (G16).
+            ...directory.members.map(person => ({ value: person.id, label: person.name, avatar: person.id })),
+            // Someone assigned who is no longer listed still shows as chosen.
+            ...(issue.assignee && !directory.members.some(person => person.id === issue.assignee) && people.get(issue.assignee)
+              ? [{ value: issue.assignee, label: people.get(issue.assignee)!.name, avatar: issue.assignee }]
+              : []),
           ]}
           disabled={stale}
           onChange={event => void save({ assignee: event.detail.value === UNASSIGNED ? null : event.detail.value } as Partial<Issue>)}

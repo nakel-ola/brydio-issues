@@ -149,9 +149,9 @@ describe('the issue screen (A8-F01-S03)', () => {
       value: 'user_ada',
       options: [
         { value: 'unassigned', label: 'Unassigned' },
-        { value: 'user_ada', label: 'Ada Lovelace' },
-        { value: 'user_bo', label: 'Bo Diddley' },
-        { value: 'user_cy', label: 'Cy Twombly' },
+        { value: 'user_ada', label: 'Ada Lovelace', avatar: 'user_ada' },
+        { value: 'user_bo', label: 'Bo Diddley', avatar: 'user_bo' },
+        { value: 'user_cy', label: 'Cy Twombly', avatar: 'user_cy' },
       ],
     });
 
@@ -164,6 +164,25 @@ describe('the issue screen (A8-F01-S03)', () => {
       { id: 'issue_login', version: 1, assignee: 'user_bo' },
       { id: 'issue_login', version: 2, assignee: null },
     ]);
+    // Each save says who made it and where, beside the issue (A3-F04-S03).
+    await host.waitFor(() => host!.findAll(node => String(node.props.text ?? '').startsWith('Last changed by'))[0], { what: 'who last changed it' });
+  });
+
+  test('says who last changed an issue, and through which door', async () => {
+    const directory = { members: [{ id: 'user_ada', name: 'Ada Lovelace' }] };
+
+    host = FakeHost.start({
+      entry: board,
+      manifest,
+      directory,
+      fixtures: { ...FIXTURES, issues: [{ ...FIXTURES.issues[0], updatedBy: 'user_ada', updatedOrigin: 'assistant' }] },
+      context: { selection: { kind: 'item', id: 'issue_login' } },
+    });
+    await host.mounted();
+
+    const line = await host.waitFor(() => host!.findAll(node => String(node.props.text ?? '').startsWith('Last changed'))[0], { what: 'who last changed it' });
+
+    expect(line.props.text).toMatch(/^Last changed by Ada Lovelace through the assistant, \d+ \w+\.$/);
   });
 
   test('Ask about this issue drafts a chat about it, for the person to send, and sends nothing', async () => {

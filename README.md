@@ -3,7 +3,7 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.11.0)
+## What it does (version 0.11.1)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
@@ -24,6 +24,8 @@ made with the Brydio SDK (`../brydio-sdk`).
   picker lists this Issues' labels and makes a **New label**. If somebody
   else changed the issue meanwhile, the save is refused with "Someone else
   changed this; reload to see", and **Reload** shows their change.
+  The issue says who last changed it and whether on the board or through the
+  assistant, and the assignee picker shows each person's initials.
   **Ask about this issue** opens a chat in the project with the issue attached
   and a question in the composer, for you to send or not. An issue opened
   from a link on a project it doesn't belong to says which project it does.
