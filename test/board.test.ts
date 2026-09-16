@@ -80,7 +80,7 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
 
 test('the manifest is one Brydio’s server accepts', () => {
   expect(validateManifest(manifest)).toMatchObject({ ok: true, problems: [] });
-  expect(manifest.version).toBe('0.7.0');
+  expect(manifest.version).toBe('0.8.0');
 });
 
 describe('the board', () => {
@@ -357,6 +357,52 @@ describe('the board', () => {
     expect(host!.calls.find(call => call.tool === 'delete_issue')).toMatchObject({ input: { id: 'issue_export' }, asked: 'allow' });
     expect(column('Doing').props.count).toBe(0);
     expect(host!.refusals).toEqual([]);
+  });
+
+  test('placed for the whole workspace, each card names its project, and a filter narrows the board by hand (S05)', async () => {
+    host = FakeHost.start({
+      entry: board,
+      manifest,
+      context: { placement: { id: 'placement_ws', kind: 'workspace-sidebar' } },
+      directory: { projects: [{ id: 'project_web', name: 'Website' }, { id: 'project_app', name: 'Mobile app' }] },
+      fixtures: {
+        issues: [
+          { id: 'issue_login', title: 'Fix the login page', status: 'todo', project: 'project_web' },
+          { id: 'issue_export', title: 'Export to CSV', status: 'doing', project: 'project_app' },
+          { id: 'issue_docs', title: 'Write the help page', status: 'done' },
+        ],
+      },
+    });
+    await host.mounted();
+    await host.waitFor(() => host!.findAll(node => node.type === 'bry-badge').length === 2, { what: 'the project names' });
+
+    const badgeIn = (title: string) => host!.findAll(node => node.type === 'bry-badge' && isInside(node, cardOf(title)))[0]?.props.text;
+    const filter = () => host!.findAll(node => node.type === 'bry-select' && node.props.label === 'Project')[0]!;
+
+    expect([badgeIn('Fix the login page'), badgeIn('Export to CSV'), badgeIn('Write the help page')]).toEqual(['Website', 'Mobile app', undefined]);
+    expect(filter().props.options).toEqual([
+      { value: 'all', label: 'All projects' },
+      { value: 'project_app', label: 'Mobile app' },
+      { value: 'project_web', label: 'Website' },
+      { value: 'none', label: 'No project' },
+    ]);
+
+    host.raise('bry-select', filter(), 'change', { value: 'project_web' });
+    await host.waitFor(() => !titled('Export to CSV'), { what: 'the other projects to go' });
+    expect([titled('Fix the login page'), titled('Write the help page')].map(Boolean)).toEqual([true, false]);
+
+    host.raise('bry-select', filter(), 'change', { value: 'none' });
+    await host.waitFor(() => titled('Write the help page') && !titled('Fix the login page'), { what: 'issues in no project' });
+
+    host.raise('bry-select', filter(), 'change', { value: 'all' });
+    await host.waitFor(() => titled('Export to CSV') && titled('Fix the login page'), { what: 'every issue again' });
+  });
+
+  test('placed in a project, it shows no project filter and asks for no project names', async () => {
+    await open();
+
+    expect(host!.findAll(node => node.type === 'bry-select' && node.props.label === 'Project')).toEqual([]);
+    expect(host!.namesAsked.filter(one => one.kind === 'projects')).toEqual([]);
   });
 
   test('a list that cannot be read says so', async () => {

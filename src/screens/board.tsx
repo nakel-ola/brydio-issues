@@ -1,5 +1,5 @@
 import { ToolError, navigate, tools } from '@brydio/app';
-import { mount, useBoard, useHost, useList, useMembers, useRef, useState } from '@brydio/app/preact';
+import { mount, useBoard, useHost, useList, useMembers, useProjects, useRef, useState } from '@brydio/app/preact';
 
 import { COLUMNS, columnIssues, dueText, placeCard, rankAfterLast, reason, type Issue, type Status } from '../issues.ts';
 import { IssueView } from './issue-view.tsx';
@@ -28,6 +28,10 @@ import { IssueView } from './issue-view.tsx';
  * which is what an address or a shared link would name. Back returns to the
  * board.
  */
+
+/** The project filter's values for every project, and for issues in none. Project ids are never these. */
+const ALL_PROJECTS = 'all';
+const NO_PROJECT = 'none';
 
 /** The item the host says is selected, if it is one of ours. */
 function selectedItem(selection: unknown): string | null {
@@ -68,7 +72,12 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
 
   if (!list.loading) loaded.current = true;
 
-  const issues = list.items;
+  // Placed without a project (the workspace sidebar), the board holds every
+  // project's issues: each card says which, and a filter narrows by hand.
+  const everyProject = !useHost().placement.projectId;
+  const [project, setProject] = useState(ALL_PROJECTS);
+  const projects = useProjects(everyProject ? list.items.map(issue => issue.project) : []);
+  const issues = everyProject && project !== ALL_PROJECTS ? list.items.filter(issue => (issue.project ?? NO_PROJECT) === project) : list.items;
   // Names and initials for the people the cards are assigned to, asked once each.
   const people = useMembers(issues.map(issue => issue.assignee));
   const error = failed ?? (list.error ? `Couldn’t load the issues. ${reason(list.error)}` : null);
@@ -142,6 +151,19 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
         </bry-card>
       )}
       {error && <bry-text tone="danger" text={error} />}
+      {everyProject && (
+        <bry-select
+          label="Project"
+          size="sm"
+          value={project}
+          options={[
+            { value: ALL_PROJECTS, label: 'All projects' },
+            ...[...projects.values()].sort((a, b) => a.name.localeCompare(b.name)).map(one => ({ value: one.id, label: one.name })),
+            ...(list.items.some(issue => !issue.project) ? [{ value: NO_PROJECT, label: 'No project' }] : []),
+          ]}
+          onChange={event => setProject(event.detail.value)}
+        />
+      )}
       <bry-board
         label="Issues"
         cardSize="lg"
@@ -214,6 +236,7 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
                       </bry-menu>
                     </bry-stack>
                     {issue.due && <bry-text tone="muted" size="sm" text={dueText(issue.due)} />}
+                    {everyProject && issue.project && projects.get(issue.project) && <bry-badge text={projects.get(issue.project)!.name} tone="brand" />}
                     {issue.assignee && people.get(issue.assignee) && (
                       <bry-stack direction="row" gap="2" align="center">
                         <bry-avatar name={people.get(issue.assignee)!.name} size="sm" />

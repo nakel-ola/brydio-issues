@@ -3,7 +3,7 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.7.0)
+## What it does (version 0.8.0)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
@@ -44,7 +44,9 @@ a chat too.
 
 It can appear as a **project tab**, in a **project's sidebar**, and at the top
 of the **workspace sidebar**. Placed in a project, it shows only that
-project's issues, and a new issue belongs to that project.
+project's issues, and a new issue belongs to that project. At the top of the
+workspace sidebar it shows every project's issues, each card naming its
+project, with a **Project** filter to narrow the board.
 
 ### What it can't do yet
 

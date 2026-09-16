@@ -1,6 +1,6 @@
 {
   "name": "issues",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "displayName": "Issues",
   "summary": "A board of your project's issues, which the assistant can work on too.",
   "placements": [
@@ -37,5 +37,5 @@
     "board": { "entry": "screens/board.js" },
     "issue": { "entry": "screens/issue.js" }
   },
-  "grants": { "tools": ["*"], "collections": ["*"], "host": ["navigate", "members"] }
+  "grants": { "tools": ["*"], "collections": ["*"], "host": ["navigate", "members", "projects"] }
 }
