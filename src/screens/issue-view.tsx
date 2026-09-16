@@ -1,5 +1,5 @@
 import { ToolError, tools } from '@brydio/app';
-import { useEffect, useList, useRef, useState } from '@brydio/app/preact';
+import { useEffect, useList, useMembers, useRef, useState } from '@brydio/app/preact';
 
 import { COLUMNS, dueText, reason, type Issue, type Status } from '../issues.ts';
 
@@ -30,6 +30,9 @@ interface Label {
 
 export const STALE = 'Someone else changed this; reload to see.';
 
+/** The picker's value for nobody: a member id is never empty. */
+const UNASSIGNED = 'unassigned';
+
 export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
   const [issue, setIssue] = useState<Issue | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
@@ -40,6 +43,9 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
   const [editingBody, setEditingBody] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const labels = useList<Label>('labels', { limit: 200 }, { watch: true });
+  // The people this Issues already names: whoever an issue here is assigned to.
+  const everyone = useList<Issue>('issues', { limit: 200 });
+  const people = useMembers([...everyone.items.map(one => one.assignee), issue?.assignee]);
   // The version the next save starts from, and the saves waiting their turn.
   const version = useRef(0);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
@@ -172,6 +178,19 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
           onChange={event => void save({ due: event.detail.value || null } as Partial<Issue>)}
         />
         {issue.due && <bry-text tone="muted" size="sm" text={dueText(issue.due)} />}
+      </bry-stack>
+      <bry-stack direction="row" gap="2" align="end">
+        {issue.assignee && people.get(issue.assignee) && <bry-avatar name={people.get(issue.assignee)!.name} />}
+        <bry-select
+          label="Assignee"
+          value={issue.assignee ?? UNASSIGNED}
+          options={[
+            { value: UNASSIGNED, label: 'Unassigned' },
+            ...[...people.values()].sort((a, b) => a.name.localeCompare(b.name)).map(person => ({ value: person.id, label: person.name })),
+          ]}
+          disabled={stale}
+          onChange={event => void save({ assignee: event.detail.value === UNASSIGNED ? null : event.detail.value } as Partial<Issue>)}
+        />
       </bry-stack>
       <bry-label text="Description">
         {editingBody ? (

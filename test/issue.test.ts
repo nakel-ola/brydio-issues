@@ -40,6 +40,12 @@ const cardTitled = (title: string) => {
 
   return at!;
 };
+function isInside(node: TreeNode, ancestor: TreeNode): boolean {
+  for (let at = host!.parentOf(node); at; at = host!.parentOf(at)) if (at.id === ancestor.id) return true;
+
+  return false;
+}
+
 const saves = () => host!.calls.filter(call => call.tool === 'update_issue').map(call => call.input);
 
 async function openIssue(title: string, options: Partial<Parameters<typeof FakeHost.start>[0]> = {}) {
@@ -110,6 +116,50 @@ describe('the issue screen (A8-F01-S03)', () => {
     ]);
     expect(host!.findAll(node => node.type === 'bry-button' && /^Save/.test(String(node.props.label)))).toEqual([]);
     expect(host!.store!.records('issues').find(issue => issue.id === 'issue_login')).toMatchObject({ status: 'doing', title: 'Fix the sign-in page', version: 5 });
+  });
+
+  test('a card shows its assignee’s avatar and name, and the assignee picker saves who, or nobody', async () => {
+    const directory = { members: [{ id: 'user_ada', name: 'Ada Lovelace' }, { id: 'user_bo', name: 'Bo Diddley' }] };
+    const fixtures = {
+      ...FIXTURES,
+      issues: [
+        { ...FIXTURES.issues[0], assignee: 'user_ada' },
+        { ...FIXTURES.issues[1], assignee: 'user_bo' },
+      ],
+    };
+
+    host = FakeHost.start({ entry: board, manifest, fixtures, directory });
+    await host.mounted();
+    await host.waitFor(() => host!.findAll(node => node.type === 'bry-avatar').length === 2, { what: 'the avatars' });
+
+    const avatarIn = (title: string) => host!.findAll(node => node.type === 'bry-avatar' && isInside(node, cardTitled(title)))[0]!;
+
+    expect(avatarIn('Fix the login page').props).toEqual({ name: 'Ada Lovelace', size: 'sm' });
+    expect(avatarIn('Export to CSV').props.name).toBe('Bo Diddley');
+    // Asked once, for both people, not once per card.
+    expect(host.namesAsked).toEqual([{ kind: 'members', ids: ['user_ada', 'user_bo'] }]);
+
+    host.press(cardTitled('Fix the login page'));
+    await host.waitFor(() => of('bry-select', 'Assignee')?.props.options, { what: 'the assignee picker' });
+
+    expect(of('bry-select', 'Assignee')!.props).toMatchObject({
+      value: 'user_ada',
+      options: [
+        { value: 'unassigned', label: 'Unassigned' },
+        { value: 'user_ada', label: 'Ada Lovelace' },
+        { value: 'user_bo', label: 'Bo Diddley' },
+      ],
+    });
+
+    host.raise('bry-select', of('bry-select', 'Assignee')!, 'change', { value: 'user_bo' });
+    await host.waitFor(() => saves().length === 1);
+    host.raise('bry-select', of('bry-select', 'Assignee')!, 'change', { value: 'unassigned' });
+    await host.waitFor(() => saves().length === 2);
+
+    expect(saves()).toEqual([
+      { id: 'issue_login', version: 1, assignee: 'user_bo' },
+      { id: 'issue_login', version: 2, assignee: null },
+    ]);
   });
 
   test('the labels picker lists this instance’s labels, ticks save, and New label makes one and adds it', async () => {

@@ -3,12 +3,12 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.6.1)
+## What it does (version 0.7.0)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
-- Each issue is a **card** with its title, when it is due ("Due 3 Oct") and
-  its labels.
+- Each issue is a **card** with its title, when it is due ("Due 3 Oct"), who
+  it is assigned to (their avatar and name) and its labels.
 - **Move a card** by dragging it to another column, or with the keyboard:
   Space picks it up, the arrow keys move it, Space puts it down and Escape
   puts it back. A card lands where it was dropped, in its own column or
@@ -17,7 +17,8 @@ made with the Brydio SDK (`../brydio-sdk`).
 - **Open an issue** by pressing its card. It opens in the same tab, and
   **Back to the board** returns. Its title, description, status, due date
   and labels each save on their own as you change them, with no Save button:
-  the description is written in Markdown and read formatted, and the labels
+  the assignee is picked from the people this Issues already names, the
+  description is written in Markdown and read formatted, and the labels
   picker lists this Issues' labels and makes a **New label**. If somebody
   else changed the issue meanwhile, the save is refused with "Someone else
   changed this; reload to see", and **Reload** shows their change.
@@ -51,10 +52,9 @@ Each of these waits on something in Brydio, listed in its gap log.
 
 - **Share an issue's address.** Brydio doesn't yet put the open issue in the
   page's address, so a copied link opens the board.
-- **Pick an assignee.** Brydio can't yet list the workspace's members to an
-  app.
-- **Show assignees' faces.** An assignee is stored, but the board can't look
-  up a member's name yet.
+- **Pick any member as the assignee.** Brydio names the people an app already
+  holds ids for, but can't yet list the whole workspace, so the picker offers
+  the people already assigned in this Issues.
 
 ## The files
 

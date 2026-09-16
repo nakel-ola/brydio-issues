@@ -1,5 +1,5 @@
 import { ToolError, navigate, tools } from '@brydio/app';
-import { mount, useBoard, useHost, useList, useRef, useState } from '@brydio/app/preact';
+import { mount, useBoard, useHost, useList, useMembers, useRef, useState } from '@brydio/app/preact';
 
 import { COLUMNS, columnIssues, dueText, placeCard, rankAfterLast, reason, type Issue, type Status } from '../issues.ts';
 import { IssueView } from './issue-view.tsx';
@@ -69,6 +69,8 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
   if (!list.loading) loaded.current = true;
 
   const issues = list.items;
+  // Names and initials for the people the cards are assigned to, asked once each.
+  const people = useMembers(issues.map(issue => issue.assignee));
   const error = failed ?? (list.error ? `Couldn’t load the issues. ${reason(list.error)}` : null);
 
   /**
@@ -212,6 +214,12 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
                       </bry-menu>
                     </bry-stack>
                     {issue.due && <bry-text tone="muted" size="sm" text={dueText(issue.due)} />}
+                    {issue.assignee && people.get(issue.assignee) && (
+                      <bry-stack direction="row" gap="2" align="center">
+                        <bry-avatar name={people.get(issue.assignee)!.name} size="sm" />
+                        <bry-text tone="muted" size="sm" text={people.get(issue.assignee)!.name} />
+                      </bry-stack>
+                    )}
                     {(issue.labels ?? []).length > 0 && (
                       <bry-stack direction="row" gap="1" wrap>
                         {(issue.labels ?? []).map(label => (
