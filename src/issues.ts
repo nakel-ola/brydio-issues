@@ -13,6 +13,7 @@ export const ISSUE_SCHEMA = {
   labels: 'string[]',
   body: 'text?',
   project: 'project?',
+  due: 'date?',
 } as const;
 
 export type Issue = DocumentOf<typeof ISSUE_SCHEMA>;
@@ -36,4 +37,12 @@ export function neighbour(status: Status, step: -1 | 1): Status | null {
 /** An error in words a person can read on the board. */
 export function reason(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** A due date as the card says it: "Due 3 Oct". The host's locale decides the words. */
+export function dueText(due: string, locale = 'en-GB'): string {
+  const [year, month, day] = due.split('-').map(Number);
+  const date = new Date(Date.UTC(year!, month! - 1, day!));
+
+  return `Due ${date.toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' })}`;
 }

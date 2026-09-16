@@ -3,35 +3,41 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.1.0)
+## What it does (version 0.3.0)
 
 - Shows a **board** with three columns: **To do**, **Doing** and **Done**.
-- Each issue is a **card** with its title and two arrow buttons, **←** and
-  **→**, that move it one column left or right.
-- **New issue** adds an issue called "New issue" to To do.
+- Each issue is a **card** with its title, its labels, when it is due, and
+  two arrow buttons, **←** and **→**, that move it one column left or right.
+- **New issue** opens a small form: type a title, pick a due date if you want
+  one, then **Add** (or press Enter).
+- A card's **⋯** menu has **Delete**.
 - Every change asks the person first (Brydio shows an *Allow once* / *Don't
-  allow* card), then the board reloads.
+  allow* card), then the board reloads. The board never asks a second time.
 - If something goes wrong (the person says no, or someone else moved the same
   issue a moment earlier) a red line on the board says what happened.
 
 It keeps two kinds of record: **issues** (a title, a status, who it is
-assigned to, labels, a longer description and the project it belongs to) and
-**labels** (a name and a colour). Brydio makes the tools for these by itself,
-so the assistant can create, list and move issues in a chat too.
+assigned to, labels, a longer description, a due date and the project it
+belongs to) and **labels** (a name and a colour). Brydio makes the tools for
+these by itself, so the assistant can create, list, move and delete issues in
+a chat too.
 
 It can appear as a **project tab**, in a **project's sidebar**, and at the top
-of the **workspace sidebar**.
+of the **workspace sidebar**. Placed in a project, it shows only that
+project's issues, and a new issue belongs to that project.
 
 ### What it can't do yet
 
-- **Type anything.** Phase 0 of Brydio gives a screen five building blocks
-  (a stack, a heading, a text, a button and a card) and no text box, so a new
-  issue is always called "New issue". Rename it from a chat with the
-  assistant for now; the next version adds a proper form once Brydio has an
-  input.
-- **Open a single issue.** The `issue` screen is a placeholder.
+Each of these waits on something in Brydio, listed in its gap log.
+
+- **Drag a card.** The arrows move it until Brydio's board component lands.
+- **Open a single issue.** The `issue` screen is a placeholder until a screen
+  can open another.
 - **Update live.** If someone else changes an issue, the board shows it after
   the next change you make, or when you open the tab again.
+- **Show assignees' faces.** An assignee is stored, but the board can't look
+  up a member's name yet.
+- **Name the ⋯ button for a screen reader.** A button's name is its label.
 
 ## The files
 

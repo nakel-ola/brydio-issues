@@ -13,7 +13,7 @@ const FIXTURES = {
   issues: [
     { id: 'issue_login', title: 'Fix the login page', status: 'todo' },
     { id: 'issue_export', title: 'Export to CSV', status: 'doing', labels: ['data'] },
-    { id: 'issue_docs', title: 'Write the help page', status: 'done' },
+    { id: 'issue_docs', title: 'Write the help page', status: 'done', due: '2026-10-03' },
   ],
 };
 
@@ -169,6 +169,43 @@ describe('the board', () => {
 
     expect(badge).toBeDefined();
     expect(cardOf('Export to CSV').card.id).toBe(host!.parentOf(host!.parentOf(host!.parentOf(badge!)!)!)!.id);
+  });
+
+  test('a due date picked in the form is sent with create_issue, and a card says when it is due', async () => {
+    await open();
+
+    expect(host!.byText('Due 3 Oct')).toBeDefined();
+    expect(host!.findAll(node => node.type === 'bry-text' && String(node.props.text).startsWith('Due '))).toHaveLength(1);
+
+    host!.press(host!.byText('New issue')!);
+
+    const field = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input')[0], { what: 'the title field' });
+    const date = host!.findAll(node => node.type === 'bry-date')[0]!;
+
+    expect(date.props).toMatchObject({ label: 'Due', placeholder: 'No due date' });
+    host!.event(field.id, 'change', { value: 'Ship the release' });
+    host!.event(date.id, 'change', { value: '2026-11-20' });
+    await host!.waitFor(() => host!.findAll(node => node.type === 'bry-date')[0]?.props.value === '2026-11-20', { what: 'the picked date' });
+    host!.event(field.id, 'submit', { value: 'Ship the release' });
+    await host!.waitFor(() => host!.byText('Due 20 Nov'), { what: 'the new card’s due date' });
+
+    expect(host!.calls.find(call => call.tool === 'create_issue')).toMatchObject({
+      input: { title: 'Ship the release', status: 'todo', due: '2026-11-20' },
+    });
+  });
+
+  test('a card’s menu deletes the issue with delete_issue, asking through Brydio', async () => {
+    await open();
+
+    const menu = host!.findAll(node => node.type === 'bry-menu' && isInside(node, cardOf('Export to CSV').card))[0]!;
+
+    expect(menu.props.items).toEqual([{ id: 'delete', label: 'Delete', icon: 'trash', tone: 'danger' }]);
+    host!.event(menu.id, 'select', { id: 'delete' });
+    await host!.waitFor(() => !host!.byText('Export to CSV'), { what: 'the card to go' });
+
+    expect(host!.calls.find(call => call.tool === 'delete_issue')).toMatchObject({ input: { id: 'issue_export' }, asked: 'allow' });
+    expect(host!.byText('Doing (0)')).toBeDefined();
+    expect(host!.refusals).toEqual([]);
   });
 
   test('a write that fails leaves the board as it was and says why on an error line', async () => {

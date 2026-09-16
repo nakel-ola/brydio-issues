@@ -1,6 +1,6 @@
 {
   "name": "issues",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "displayName": "Issues",
   "placements": [
     { "kind": "project-tab", "screen": "board", "label": "Issues", "icon": "kanban" },
@@ -15,7 +15,8 @@
         "assignee": "member?",
         "labels": "string[]",
         "body": "text?",
-        "project": "project?"
+        "project": "project?",
+        "due": "date?"
       },
       "search": ["title", "body"],
       "label": "issue"
