@@ -3,7 +3,7 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.5.0)
+## What it does (version 0.6.0)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
@@ -14,6 +14,13 @@ made with the Brydio SDK (`../brydio-sdk`).
   puts it back. A card lands where it was dropped, in its own column or
   another, and stays there after a reload. If the move doesn't go through,
   the card goes back.
+- **Open an issue** by pressing its card. It opens in the same tab, and
+  **Back to the board** returns. Its title, description, status, due date
+  and labels each save on their own as you change them, with no Save button:
+  the description is written in Markdown and read formatted, and the labels
+  picker lists this Issues' labels and makes a **New label**. If somebody
+  else changed the issue meanwhile, the save is refused with "Someone else
+  changed this; reload to see", and **Reload** shows their change.
 - **New issue** opens a small form: type a title, pick a due date if you want
   one, then **Add** (or press Enter).
 - A card's actions button (**⋯**, named "Actions for" the issue's title for a
@@ -42,8 +49,10 @@ project's issues, and a new issue belongs to that project.
 
 Each of these waits on something in Brydio, listed in its gap log.
 
-- **Open a single issue.** The `issue` screen is a placeholder until a screen
-  can open another.
+- **Share an issue's address.** Brydio doesn't yet put the open issue in the
+  page's address, so a copied link opens the board.
+- **Pick an assignee.** Brydio can't yet list the workspace's members to an
+  app.
 - **Show assignees' faces.** An assignee is stored, but the board can't look
   up a member's name yet.
 
@@ -53,7 +62,8 @@ Each of these waits on something in Brydio, listed in its gap log.
 |---|---|
 | `.brydio/app.json` | The manifest: the app's name and version, its records, where it appears, its screens and what it asks Brydio for. |
 | `src/screens/board.tsx` | The board. |
-| `src/screens/issue.tsx` | The placeholder for one issue. |
+| `src/screens/issue-view.tsx` | One issue, opened from its card: each field saves on its own. |
+| `src/screens/issue.tsx` | The same issue view, for a placement that names the `issue` screen with an issue selected. |
 | `src/issues.ts` | What an issue is, the order of the columns, and how a due date reads. |
 | `.brydio/samples.json` | The sample issues and labels `brydio publish` draws each screen with, for the pictures on the app's listing. |
 | `test/board.test.ts` | Runs the built board in a pretend Brydio with three sample issues, drops cards in other columns, changes issues as somebody else would, and checks what the board did. |

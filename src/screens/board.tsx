@@ -1,7 +1,8 @@
-import { ToolError, tools } from '@brydio/app';
-import { mount, useBoard, useList, useRef, useState } from '@brydio/app/preact';
+import { ToolError, navigate, tools } from '@brydio/app';
+import { mount, useBoard, useHost, useList, useRef, useState } from '@brydio/app/preact';
 
 import { COLUMNS, columnIssues, dueText, placeCard, rankAfterLast, reason, type Issue, type Status } from '../issues.ts';
+import { IssueView } from './issue-view.tsx';
 
 /**
  * The Issues board (A8-F01).
@@ -21,12 +22,40 @@ import { COLUMNS, columnIssues, dueText, placeCard, rankAfterLast, reason, type 
  * The list is watched, so an issue somebody else makes or moves, in another
  * tab or through the assistant in a chat, shows without a reload. Every write
  * asks the person first, through Brydio, so the board doesn't ask again.
+ *
+ * Pressing a card opens the issue in the same tab: the board asks Brydio to
+ * open the item (`ui/navigate`), and Brydio makes it the screen's selection,
+ * which is what an address or a shared link would name. Back returns to the
+ * board.
  */
+
+/** The item the host says is selected, if it is one of ours. */
+function selectedItem(selection: unknown): string | null {
+  const item = selection as { kind?: unknown; id?: unknown } | null | undefined;
+
+  return item?.kind === 'item' && typeof item.id === 'string' ? item.id : null;
+}
+
+function Screen() {
+  const selected = selectedItem(useHost().selection);
+  const [open, setOpen] = useState<string | null>(selected);
+  const seen = useRef(selected);
+
+  // A selection the host changes (a link, the address, another press) opens
+  // that issue. Compared during render, not in an effect: a worker's effects
+  // run late, and one arriving after Back would open the issue again.
+  if (seen.current !== selected) {
+    seen.current = selected;
+    setOpen(selected);
+  }
+
+  return open ? <IssueView id={open} onBack={() => setOpen(null)} /> : <Board onOpen={setOpen} />;
+}
 
 /** Everything in one page: a board of more than two hundred issues wants windowed columns. */
 const QUERY = { limit: 200 };
 
-function Board() {
+function Board({ onOpen }: { onOpen: (id: string) => void }) {
   const list = useList<Issue>('issues', QUERY, { watch: true });
   const keys = useBoard<string, Status>();
   const [failed, setFailed] = useState<string | null>(null);
@@ -155,7 +184,23 @@ function Board() {
           return (
             <bry-board-column key={column.status} ref={keys.column(column.status)} title={column.title} count={cards.length} empty="Nothing here.">
               {cards.map(issue => (
-                <bry-card key={issue.id} ref={keys.card(issue.id)} padding="3">
+                <bry-card
+                  key={issue.id}
+                  ref={keys.card(issue.id)}
+                  padding="3"
+                  pressable
+                  onPress={async () => {
+                    try {
+                      await navigate({ kind: 'item', id: issue.id });
+                    } catch (failure) {
+                      setFailed(`Couldn’t open “${issue.title}”. ${reason(failure)}`);
+
+                      return;
+                    }
+
+                    onOpen(issue.id);
+                  }}
+                >
                   <bry-stack gap="2">
                     <bry-stack direction="row" justify="between" align="start" gap="2">
                       <bry-text text={issue.title} />
@@ -185,4 +230,4 @@ function Board() {
   );
 }
 
-void mount(Board);
+void mount(Screen);
