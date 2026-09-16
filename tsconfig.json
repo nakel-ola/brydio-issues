@@ -15,7 +15,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "@brydio/app/preact"
+    "jsxImportSource": "@brydio/app/preact",
+    "plugins": [{ "name": "@brydio/cli/ts-plugin" }]
   },
   "include": ["src", "test"]
 }
