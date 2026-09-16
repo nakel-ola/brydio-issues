@@ -70,7 +70,11 @@ export const WINDOW = 40;
 function useIssues() {
   const [state, setState] = useState<{ items: Issue[]; loading: boolean; error: Error | null }>({ items: [], loading: true, error: null });
   const ticket = useRef(0);
-  const refetch = useCallback(async () => {
+  // One read at a time: a read asked for while one runs becomes one more read after it,
+  // so a burst of changes (a write and its own watch, a renumbering) costs two reads, not one each.
+  const running = useRef<Promise<void> | null>(null);
+  const again = useRef(false);
+  const readAll = useCallback(async () => {
     const mine = ++ticket.current;
     const items: Issue[] = [];
     let cursor: string | null = null;
@@ -88,6 +92,24 @@ function useIssues() {
       if (mine === ticket.current) setState(previous => ({ ...previous, loading: false, error: error instanceof Error ? error : new Error(String(error)) }));
     }
   }, []);
+  const refetch = useCallback((): Promise<void> => {
+    if (running.current) {
+      again.current = true;
+
+      return running.current;
+    }
+
+    running.current = (async () => {
+      do {
+        again.current = false;
+        await readAll();
+      } while (again.current);
+
+      running.current = null;
+    })();
+
+    return running.current;
+  }, [readAll]);
 
   useLayoutEffect(() => {
     void refetch();

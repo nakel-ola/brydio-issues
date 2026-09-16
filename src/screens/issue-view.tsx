@@ -1,5 +1,5 @@
 import { ToolError, tools } from '@brydio/app';
-import { useEffect, useList, useMembers, useRef, useState } from '@brydio/app/preact';
+import { useEffect, useList, useMemberList, useMembers, useRef, useState } from '@brydio/app/preact';
 
 import { COLUMNS, dueText, reason, type Issue, type Status } from '../issues.ts';
 
@@ -43,9 +43,11 @@ export function IssueView({ id, onBack }: { id: string; onBack: () => void }) {
   const [editingBody, setEditingBody] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const labels = useList<Label>('labels', { limit: 200 }, { watch: true });
-  // The people this Issues already names: whoever an issue here is assigned to.
-  const everyone = useList<Issue>('issues', { limit: 200 });
-  const people = useMembers([...everyone.items.map(one => one.assignee), issue?.assignee]);
+  // Everyone this Issues may assign to, as Brydio lists them, and the assignee's own name
+  // (someone no longer listed, such as a person who left the project, still shows).
+  const directory = useMemberList();
+  const assigned = useMembers([issue?.assignee]);
+  const people = new Map([...assigned, ...directory.members.map(person => [person.id, person] as const)]);
   // The version the next save starts from, and the saves waiting their turn.
   const version = useRef(0);
   const queue = useRef<Promise<unknown>>(Promise.resolve());

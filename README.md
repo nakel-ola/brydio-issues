@@ -3,7 +3,7 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.9.0)
+## What it does (version 0.9.1)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
@@ -17,7 +17,7 @@ made with the Brydio SDK (`../brydio-sdk`).
 - **Open an issue** by pressing its card. It opens in the same tab, and
   **Back to the board** returns. Its title, description, status, due date
   and labels each save on their own as you change them, with no Save button:
-  the assignee is picked from the people this Issues already names, the
+  the assignee is picked from the people Brydio lets this Issues name, the
   description is written in Markdown and read formatted, and the labels
   picker lists this Issues' labels and makes a **New label**. If somebody
   else changed the issue meanwhile, the save is refused with "Someone else
@@ -57,9 +57,6 @@ Each of these waits on something in Brydio, listed in its gap log.
 
 - **Share an issue's address.** Brydio doesn't yet put the open issue in the
   page's address, so a copied link opens the board.
-- **Pick any member as the assignee.** Brydio names the people an app already
-  holds ids for, but can't yet list the whole workspace, so the picker offers
-  the people already assigned in this Issues.
 
 ## The files
 

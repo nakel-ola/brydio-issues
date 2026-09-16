@@ -119,7 +119,8 @@ describe('the issue screen (A8-F01-S03)', () => {
   });
 
   test('a card shows its assignee’s avatar and name, and the assignee picker saves who, or nobody', async () => {
-    const directory = { members: [{ id: 'user_ada', name: 'Ada Lovelace' }, { id: 'user_bo', name: 'Bo Diddley' }] };
+    // Cy is assigned nothing: the picker lists everyone Brydio lets this Issues name, not only who is assigned.
+    const directory = { members: [{ id: 'user_ada', name: 'Ada Lovelace' }, { id: 'user_bo', name: 'Bo Diddley' }, { id: 'user_cy', name: 'Cy Twombly' }] };
     const fixtures = {
       ...FIXTURES,
       issues: [
@@ -148,6 +149,7 @@ describe('the issue screen (A8-F01-S03)', () => {
         { value: 'unassigned', label: 'Unassigned' },
         { value: 'user_ada', label: 'Ada Lovelace' },
         { value: 'user_bo', label: 'Bo Diddley' },
+        { value: 'user_cy', label: 'Cy Twombly' },
       ],
     });
 
