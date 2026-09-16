@@ -1,0 +1,34 @@
+{
+  "name": "issues",
+  "version": "0.1.0",
+  "displayName": "Issues",
+  "placements": [
+    { "kind": "project-tab", "screen": "board", "label": "Issues", "icon": "kanban" },
+    { "kind": "project-sidebar", "screen": "board", "label": "Issues", "icon": "kanban" },
+    { "kind": "workspace-sidebar", "screen": "board", "label": "Issues", "icon": "kanban" }
+  ],
+  "data": {
+    "issues": {
+      "schema": {
+        "title": "string",
+        "status": ["todo", "doing", "done"],
+        "assignee": "member?",
+        "labels": "string[]",
+        "body": "text?",
+        "project": "project?"
+      },
+      "search": ["title", "body"],
+      "label": "issue"
+    },
+    "labels": {
+      "schema": { "name": "string", "colour": "token" },
+      "label": "label"
+    }
+  },
+  "tools": { "generated": true, "custom": [] },
+  "screens": {
+    "board": { "entry": "screens/board.js" },
+    "issue": { "entry": "screens/issue.js" }
+  },
+  "grants": { "tools": ["*"], "collections": ["*"], "host": ["navigate", "message"] }
+}
