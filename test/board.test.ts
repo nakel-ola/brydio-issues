@@ -74,13 +74,15 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
   host = FakeHost.start({ entry: board, manifest, fixtures: FIXTURES, ...options });
   await host.mounted();
   await host.waitFor(() => host!.byText('Fix the login page'), { what: 'the issues to load' });
+  // Every column read, and the cards' names, badges and menus joined after the first paint.
+  await host.idle();
 
   return host;
 }
 
 test('the manifest is one Brydio’s server accepts', () => {
   expect(validateManifest(manifest)).toMatchObject({ ok: true, problems: [] });
-  expect(manifest.version).toBe('0.11.3');
+  expect(manifest.version).toBe('0.11.4');
 });
 
 describe('the board', () => {
@@ -100,9 +102,9 @@ describe('the board', () => {
     expect(columnOf('Write the help page')).toBe('Done');
     // Each column's first cards, read at once.
     expect(host!.calls.slice(0, 3).map(call => [call.tool, call.input])).toEqual([
-      ['list_issues', { filter: { status: 'todo' }, limit: 40 }],
-      ['list_issues', { filter: { status: 'doing' }, limit: 40 }],
-      ['list_issues', { filter: { status: 'done' }, limit: 40 }],
+      ['list_issues', { filter: { status: 'todo' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 }],
+      ['list_issues', { filter: { status: 'doing' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 }],
+      ['list_issues', { filter: { status: 'done' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 }],
     ]);
     expect(host!.watching).toEqual(['issues']);
     // No arrows: the board's own drag and keyboard move a card.

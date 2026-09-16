@@ -57,15 +57,15 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
     const took = Date.now() - started;
 
     expect(STATUSES.map(status => host!.findAll(node => node.type === 'bry-board-column')[STATUSES.indexOf(status)]!.props.count)).toEqual([350, 100, 50]);
-    // Each column's first 40 at once, then the rest of each column: To do's 310 in two pages, Doing's 60 in one; Done's 50 needs one more.
-    const reads = host.calls.filter(call => call.tool === 'list_issues').map(call => call.input as { filter: { status: string }; limit: number; cursor?: string });
+    // Each column's first 12 at once, then the rest of each column: To do's 338 in two pages, Doing's 88 in one, Done's 38 in one.
+    const reads = host.calls.filter(call => call.tool === 'list_issues').map(call => call.input as { filter: { status: string }; sort: unknown; limit: number; cursor?: string });
 
     expect(reads.slice(0, 3)).toEqual([
-      { filter: { status: 'todo' }, limit: 40 },
-      { filter: { status: 'doing' }, limit: 40 },
-      { filter: { status: 'done' }, limit: 40 },
+      { filter: { status: 'todo' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 },
+      { filter: { status: 'doing' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 },
+      { filter: { status: 'done' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 },
     ]);
-    expect(reads.slice(3).every(read => read.limit === 200 && read.cursor)).toBe(true);
+    expect(reads.slice(3).every(read => read.limit === 200 && read.cursor && JSON.stringify(read.sort) === '{"field":"rank","dir":"asc"}')).toBe(true);
     expect(reads.slice(3).map(read => read.filter.status).sort()).toEqual(['doing', 'done', 'todo', 'todo']);
     expect(host.findAll(node => node.type === 'bry-card')).toHaveLength(40 + 40 + 40);
     expect(host.tree.size).toBeLessThan(1_500);
@@ -74,7 +74,7 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
     expect(took).toBeLessThan(3_000);
   });
 
-  test('draws the first page before the rest have been read', async () => {
+  test('opens with To do’s first cards, before the other columns or any later page are read, and carries only titles at first', async () => {
     const pages = new FixtureStore(manifest, { issues: MANY }).tools().list_issues!;
     let release: () => void = () => {};
     const held = new Promise<void>(resolve => (release = resolve));
@@ -82,18 +82,40 @@ describe('a board of 500 issues (A8-F01-S02)', () => {
     host = FakeHost.start({
       entry: board,
       manifest,
-      // The same pages as the store, but the ones after the first wait for the test.
-      tools: { list_issues: async input => (input.cursor ? (await held, pages(input)) : pages(input)) },
+      fixtures: { issues: MANY },
+      // To do's first page answers at once; Doing's, Done's and every later page wait for the test.
+      tools: {
+        list_issues: async input => {
+          const read = input as { filter: { status: string }; cursor?: string };
+
+          if (read.cursor || read.filter.status !== 'todo') await held;
+
+          return pages(input);
+        },
+      },
     });
     await host.mounted();
-    const drawn = () => host!.findAll(node => node.type === 'bry-board-column').reduce((sum, one) => sum + Number(one.props.count), 0);
 
-    // Each column's first 40 (Done has only 50), all in one tree, before any later page is read.
-    await host.waitFor(() => drawn() === 120, { what: 'every column’s first page, drawn', timeout: 5_000 });
+    // To do's first 12, drawn alone: the first cards on the screen don't wait for the other columns.
+    await host.waitFor(() => column('To do')?.props.count === 12, { what: 'To do’s first page, drawn', timeout: 5_000 });
 
+    expect(column('Doing').props.count).toBe(0);
     expect(host.findAll(node => node.type === 'bry-board')[0]!.props.loading).toBeUndefined();
+
+    // The first tree with cards in it has their titles, and no menus, avatars or badges yet.
+    const first = JSON.stringify(host.received.find(message => JSON.stringify(message).includes('"bry-card"')));
+
+    console.log('FIRST', first.slice(0, 1500));
+    expect(first).toContain('Issue 0');
+    expect(first).not.toContain('bry-menu');
+    expect(first).not.toContain('bry-badge');
+    expect(first).not.toContain('bry-avatar');
+    // They join on the next update.
+    await host.waitFor(() => host!.findAll(node => node.type === 'bry-menu').length === 12, { what: 'the cards’ menus', timeout: 5_000 });
+
     release();
     await host.waitFor(() => column('To do')?.props.count === 350, { what: 'all 500', timeout: 5_000 });
+    expect(column('Done').props.count).toBe(50);
   });
 
   test('a column’s range draws the cards it asks for, from start, and a move there still writes one rank', async () => {

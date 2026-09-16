@@ -1,5 +1,5 @@
 import { ToolError, data, navigate, tools } from '@brydio/app';
-import { mount, useBoard, useCallback, useHost, useLayoutEffect, useMembers, useProjects, useRef, useState, useWatch } from '@brydio/app/preact';
+import { mount, useBoard, useCallback, useEffect, useHost, useLayoutEffect, useMembers, useProjects, useRef, useState, useWatch } from '@brydio/app/preact';
 
 import { COLUMNS, columnIssues, dueText, placeCard, rankAfterLast, reason, type Issue, type Status } from '../issues.ts';
 import { IssueView } from './issue-view.tsx';
@@ -66,8 +66,14 @@ function Screen() {
 /** A page of issues: the store's largest. */
 const PAGE = 200;
 
-/** A column's first page: as many cards as it draws at once, so the board opens as soon as they're read. */
-const FIRST_PAGE = 40;
+/** Read in the column's own order, so a first page is the top of its column. */
+const BY_RANK = { field: 'rank', dir: 'asc' } as const;
+
+/** The same menu for every card: one array, so a card drawn again sends nothing new. */
+const CARD_MENU: { id: string; label: string; icon: 'trash'; tone: 'danger' }[] = [{ id: 'delete', label: 'Delete', icon: 'trash', tone: 'danger' }];
+
+/** A column's first page: about what a column shows before any scrolling, so the board opens as soon as they're read. */
+const FIRST_PAGE = 12;
 
 /**
  * How many cards a column draws at once. A column holds all its issues'
@@ -84,25 +90,41 @@ function useIssues() {
   // so a burst of changes (a write and its own watch, a renumbering) costs two reads, not one each.
   const running = useRef<Promise<void> | null>(null);
   const again = useRef(false);
+  // Whether the board has been read once: reading again after that draws once, when everything is in.
+  const opened = useRef(false);
   const readAll = useCallback(async () => {
     const mine = ++ticket.current;
+    const opening = !opened.current;
     const failed = (error: unknown) => {
       if (mine === ticket.current) setState(previous => ({ ...previous, loading: false, error: error instanceof Error ? error : new Error(String(error)) }));
     };
 
     try {
-      // Each column's first cards, all three at once, drawn in one go: that is the board opening.
-      const firsts = await Promise.all(
-        COLUMNS.map(column => data.list<Issue>('issues', { filter: { status: column.status }, limit: FIRST_PAGE })),
+      // Opening, each column's first cards are drawn as soon as that column's read is back, not
+      // after all three: the first cards drawn are the board opening. Read again later, the whole
+      // of each column is read first, so the board never shrinks to its first pages meanwhile.
+      const firsts: ({ items: Issue[]; nextCursor: string | null } | undefined)[] = [];
+
+      await Promise.all(
+        COLUMNS.map(async (column, at) => {
+          const page = await data.list<Issue>('issues', { filter: { status: column.status }, sort: BY_RANK, limit: opening ? FIRST_PAGE : PAGE });
+
+          firsts[at] = page;
+          if (opening && mine === ticket.current) setState({ items: firsts.flatMap(one => one?.items ?? []), loading: true, error: null });
+        }),
       );
 
       if (mine !== ticket.current) return;
 
-      const more = firsts.some(page => page.nextCursor);
+      opened.current = true;
 
-      setState({ items: firsts.flatMap(page => page.items), loading: more, error: null });
+      const more = firsts.some(page => page!.nextCursor);
 
-      if (!more) return;
+      if (!more) {
+        setState({ items: firsts.flatMap(page => page!.items), loading: false, error: null });
+
+        return;
+      }
 
       // The rest of each column after that, the three in parallel, merged once.
       const rests = await Promise.all(
@@ -111,7 +133,7 @@ function useIssues() {
           let cursor = firsts[at]!.nextCursor;
 
           while (cursor && mine === ticket.current) {
-            const page: { items: Issue[]; nextCursor: string | null } = await data.list<Issue>('issues', { filter: { status: column.status }, limit: PAGE, cursor });
+            const page: { items: Issue[]; nextCursor: string | null } = await data.list<Issue>('issues', { filter: { status: column.status }, sort: BY_RANK, limit: PAGE, cursor });
 
             items.push(...page.items);
             cursor = page.nextCursor;
@@ -121,7 +143,7 @@ function useIssues() {
         }),
       );
 
-      if (mine === ticket.current) setState({ items: [...firsts.flatMap(page => page.items), ...rests.flat()], loading: false, error: null });
+      if (mine === ticket.current) setState({ items: [...firsts.flatMap(page => page!.items), ...rests.flat()], loading: false, error: null });
     } catch (error) {
       failed(error);
     }
@@ -172,6 +194,13 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
 
   // Loaded once anything has been read: a later page, or a read again, keeps the board drawn.
   if (!list.loading || list.items.length) loaded.current = true;
+  // The first cards drawn carry only their titles and due dates; names, badges and menus join on
+  // the next update, so nothing but the cards themselves stands between the tab and first paint.
+  const [dressed, setDressed] = useState(false);
+
+  useEffect(() => {
+    if (!dressed && loaded.current) setDressed(true);
+  });
 
   // Placed without a project (the workspace sidebar), the board holds every
   // project's issues: each card says which, and a filter narrows by hand.
@@ -179,10 +208,10 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
   const everyProject = !here;
   const [project, setProject] = useState(ALL_PROJECTS);
   // Across the workspace, every card's project; in a project, its own, for the form (A2-F06-S03).
-  const projects = useProjects(everyProject ? list.items.map(issue => issue.project) : [here]);
+  const projects = useProjects(everyProject ? (dressed ? list.items.map(issue => issue.project) : []) : [here]);
   const issues = everyProject && project !== ALL_PROJECTS ? list.items.filter(issue => (issue.project ?? NO_PROJECT) === project) : list.items;
   // Names and initials for the people the cards are assigned to, asked once each.
-  const people = useMembers(issues.map(issue => issue.assignee));
+  const people = useMembers(dressed ? issues.map(issue => issue.assignee) : []);
   const error = failed ?? (list.error ? `Couldn’t load the issues. ${reason(list.error)}` : null);
 
   /** Runs a write, then reads the list again. False when it didn't go through, with the reason on the error line. */
@@ -357,12 +386,11 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
                   <bry-stack gap="2">
                     <bry-stack direction="row" justify="between" align="start" gap="2">
                       <bry-text text={issue.title} />
-                      <bry-menu
-                        items={[{ id: 'delete', label: 'Delete', icon: 'trash', tone: 'danger' }]}
-                        onSelect={event => event.detail.id === 'delete' && void remove(issue)}
-                      >
-                        <bry-button label={`Actions for ${issue.title}`.slice(0, 200)} icon="more" hideLabel variant="ghost" size="sm" disabled={busy} />
-                      </bry-menu>
+                      {dressed && (
+                        <bry-menu items={CARD_MENU} onSelect={event => event.detail.id === 'delete' && void remove(issue)}>
+                          <bry-button label={`Actions for ${issue.title}`.slice(0, 200)} icon="more" hideLabel variant="ghost" size="sm" disabled={busy} />
+                        </bry-menu>
+                      )}
                     </bry-stack>
                     {issue.due && <bry-text tone="muted" size="sm" text={dueText(issue.due)} />}
                     {everyProject && issue.project && projects.get(issue.project) && <bry-badge text={projects.get(issue.project)!.name} tone="brand" />}
@@ -372,7 +400,7 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
                         <bry-text tone="muted" size="sm" text={people.get(issue.assignee)!.name} />
                       </bry-stack>
                     )}
-                    {(issue.labels ?? []).length > 0 && (
+                    {dressed && (issue.labels ?? []).length > 0 && (
                       <bry-stack direction="row" gap="1" wrap>
                         {(issue.labels ?? []).map(label => (
                           <bry-badge key={label} text={label} tone="neutral" />
