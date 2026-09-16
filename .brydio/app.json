@@ -1,6 +1,6 @@
 {
   "name": "issues",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "displayName": "Issues",
   "placements": [
     { "kind": "project-tab", "screen": "board", "label": "Issues", "icon": "kanban" },
@@ -16,7 +16,8 @@
         "labels": "string[]",
         "body": "text?",
         "project": "project?",
-        "due": "date?"
+        "due": "date?",
+        "rank": "number?"
       },
       "search": ["title", "body"],
       "label": "issue"
@@ -27,7 +28,8 @@
     }
   },
   "migrations": [
-    { "version": "0.3.0", "steps": [{ "op": "add", "collection": "issues", "field": "due" }] }
+    { "version": "0.3.0", "steps": [{ "op": "add", "collection": "issues", "field": "due" }] },
+    { "version": "0.5.0", "steps": [{ "op": "add", "collection": "issues", "field": "rank" }] }
   ],
   "tools": { "generated": true, "custom": [] },
   "screens": {

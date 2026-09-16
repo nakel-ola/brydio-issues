@@ -1,7 +1,7 @@
 import { ToolError, tools } from '@brydio/app';
 import { mount, useBoard, useList, useRef, useState } from '@brydio/app/preact';
 
-import { COLUMNS, dueText, reason, type Issue, type Status } from '../issues.ts';
+import { COLUMNS, columnIssues, dueText, placeCard, rankAfterLast, reason, type Issue, type Status } from '../issues.ts';
 
 /**
  * The Issues board (A8-F01).
@@ -42,12 +42,15 @@ function Board() {
   const issues = list.items;
   const error = failed ?? (list.error ? `Couldn’t load the issues. ${reason(list.error)}` : null);
 
-  /** Runs a write, then reads the list again. False when it didn't go through, with the reason on the error line. */
-  const write = async (tool: string, input: Record<string, unknown>, words: string): Promise<boolean> => {
+  /**
+   * Runs a write, or several in order, then reads the list again. False when
+   * one didn't go through, with the reason on the error line.
+   */
+  const write = async (tool: string, input: Record<string, unknown> | Record<string, unknown>[], words: string): Promise<boolean> => {
     setBusy(true);
 
     try {
-      await tools.call(tool, input);
+      for (const one of Array.isArray(input) ? input : [input]) await tools.call(tool, one);
       setFailed(null);
       await list.refetch();
 
@@ -70,7 +73,9 @@ function Board() {
 
     if (!title) return;
 
-    if (await write('create_issue', { title, status: 'todo', ...(due ? { due } : {}) }, 'Couldn’t add the issue.')) close();
+    const input = { title, status: 'todo', rank: rankAfterLast(issues), ...(due ? { due } : {}) };
+
+    if (await write('create_issue', input, 'Couldn’t add the issue.')) close();
   };
 
   const close = () => {
@@ -114,20 +119,38 @@ function Board() {
           const move = keys.read(event);
           const issue = move && issues.find(one => one.id === move.card);
 
-          // Within a column there is no order to keep, so the card goes back where it was.
-          if (!move || !issue || move.to === issue.status) {
+          if (!move || !issue) {
             keys.refuse(event);
 
             return;
           }
 
-          const moved = await write('update_issue', { id: issue.id, version: issue.version, status: move.to }, `Couldn’t move “${issue.title}”.`);
+          // Dropped where it already was: nothing to write.
+          if (move.to === issue.status && columnIssues(issues, move.to).indexOf(issue) === move.position) {
+            keys.refuse(event);
+
+            return;
+          }
+
+          // The status and the rank in one write, so one approval card. A
+          // column with no room left is renumbered after, as a last resort.
+          const placed = placeCard(issues, issue.id, move.to, move.position);
+          const version = (id: string) => issues.find(one => one.id === id)!.version;
+          const inputs =
+            'rank' in placed
+              ? [{ id: issue.id, version: issue.version, status: move.to, rank: placed.rank }]
+              : placed.renumber.map(change =>
+                  change.id === issue.id
+                    ? { id: issue.id, version: issue.version, status: move.to, rank: change.rank }
+                    : { id: change.id, version: version(change.id), rank: change.rank },
+                );
+          const moved = await write('update_issue', inputs, `Couldn’t move “${issue.title}”.`);
 
           if (!moved) keys.refuse(event);
         }}
       >
         {COLUMNS.map(column => {
-          const cards = issues.filter(issue => issue.status === column.status);
+          const cards = columnIssues(issues, column.status);
 
           return (
             <bry-board-column key={column.status} ref={keys.column(column.status)} title={column.title} count={cards.length} empty="Nothing here.">

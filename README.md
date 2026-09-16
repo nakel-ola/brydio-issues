@@ -3,7 +3,7 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.4.0)
+## What it does (version 0.5.0)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
@@ -11,7 +11,9 @@ made with the Brydio SDK (`../brydio-sdk`).
   its labels.
 - **Move a card** by dragging it to another column, or with the keyboard:
   Space picks it up, the arrow keys move it, Space puts it down and Escape
-  puts it back. If the move doesn't go through, the card goes back.
+  puts it back. A card lands where it was dropped, in its own column or
+  another, and stays there after a reload. If the move doesn't go through,
+  the card goes back.
 - **New issue** opens a small form: type a title, pick a due date if you want
   one, then **Add** (or press Enter).
 - A card's actions button (**⋯**, named "Actions for" the issue's title for a
@@ -27,8 +29,8 @@ made with the Brydio SDK (`../brydio-sdk`).
   where they are now.
 
 It keeps two kinds of record: **issues** (a title, a status, who it is
-assigned to, labels, a longer description, a due date and the project it
-belongs to) and **labels** (a name and a colour). Brydio makes the tools for
+assigned to, labels, a longer description, a due date, the project it
+belongs to, and a rank that keeps its place in its column) and **labels** (a name and a colour). Brydio makes the tools for
 these by itself, so the assistant can create, list, move and delete issues in
 a chat too.
 
@@ -40,8 +42,6 @@ project's issues, and a new issue belongs to that project.
 
 Each of these waits on something in Brydio, listed in its gap log.
 
-- **Keep an order within a column.** An issue has no position, so a card
-  dropped higher or lower in its own column goes back where it was.
 - **Open a single issue.** The `issue` screen is a placeholder until a screen
   can open another.
 - **Show assignees' faces.** An assignee is stored, but the board can't look

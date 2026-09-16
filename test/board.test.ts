@@ -80,7 +80,7 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
 
 test('the manifest is one Brydio’s server accepts', () => {
   expect(validateManifest(manifest)).toMatchObject({ ok: true, problems: [] });
-  expect(manifest.version).toBe('0.4.0');
+  expect(manifest.version).toBe('0.5.0');
 });
 
 describe('the board', () => {
@@ -108,11 +108,12 @@ describe('the board', () => {
   test('a card dropped in another column is written with update_issue { id, version, status }, and stays there', async () => {
     await open();
 
-    drop('Fix the login page', 'Doing', 1);
+    drop('Fix the login page', 'Doing', 0);
     await host!.waitFor(() => columnOf('Fix the login page') === 'Doing', { what: 'the card to move' });
 
+    // Above the one card in Doing, which has no rank: the first step.
     expect(host!.calls.filter(call => call.tool !== 'list_issues').map(call => [call.tool, call.input, call.asked])).toEqual([
-      ['update_issue', { id: 'issue_login', version: 1, status: 'doing' }, 'allow'],
+      ['update_issue', { id: 'issue_login', version: 1, status: 'doing', rank: 1024 }, 'allow'],
     ]);
     expect(column('Doing').props.count).toBe(2);
     expect(column('To do').props.count).toBe(0);
@@ -124,7 +125,7 @@ describe('the board', () => {
     drop('Fix the login page', 'To do');
     await host!.waitFor(() => columnOf('Fix the login page') === 'To do', { what: 'the card to move back' });
 
-    expect(host!.calls.filter(call => call.tool === 'update_issue').at(-1)).toMatchObject({ input: { id: 'issue_login', version: 2, status: 'todo' } });
+    expect(host!.calls.filter(call => call.tool === 'update_issue').at(-1)).toMatchObject({ input: { id: 'issue_login', version: 2, status: 'todo', rank: 1024 } });
     expect(boardNode().props.settled).toBeUndefined();
     expect(host!.refusals).toEqual([]);
   });
@@ -139,6 +140,87 @@ describe('the board', () => {
     await host!.waitFor(() => boardNode().props.settled === card.id, { what: 'the card to be sent back' });
     expect(columnOf('Export to CSV')).toBe('Doing');
     expect(host!.store!.records('issues').find(issue => issue.id === 'issue_export')).toMatchObject({ status: 'doing', version: 1 });
+  });
+
+  test('a card dropped between two lands between them, in one write, and the next read draws it there', async () => {
+    await open({
+      fixtures: {
+        issues: [
+          { id: 'issue_a', title: 'First', status: 'todo', rank: 1024 },
+          { id: 'issue_b', title: 'Second', status: 'todo', rank: 2048 },
+          { id: 'issue_c', title: 'Third', status: 'todo' },
+          { id: 'issue_login', title: 'Fix the login page', status: 'doing' },
+        ],
+      },
+    });
+
+    const order = (title: string) => host!.tree.get(column(title).id)!.children.map(id => host!.findAll(node => node.type === 'bry-text' && isInside(node, host!.tree.get(id)!))[0]!.props.text);
+
+    // Ranked first, then the one without a rank.
+    expect(order('To do')).toEqual(['First', 'Second', 'Third']);
+
+    drop('Fix the login page', 'To do', 1);
+    await host!.waitFor(() => order('To do').join() === 'First,Fix the login page,Second,Third', { what: 'the card between First and Second' });
+
+    expect(host!.calls.filter(call => call.tool === 'update_issue').map(call => call.input)).toEqual([
+      { id: 'issue_login', version: 1, status: 'todo', rank: 1536 },
+    ]);
+
+    // Within its own column, to the top: one step above the first.
+    drop('Second', 'To do', 0);
+    await host!.waitFor(() => order('To do').join() === 'Second,First,Fix the login page,Third', { what: 'Second at the top' });
+    expect(host!.calls.filter(call => call.tool === 'update_issue').at(-1)!.input).toEqual({ id: 'issue_b', version: 1, rank: 0, status: 'todo' });
+
+    // A new issue goes after the last ranked one in To do.
+    host!.press(host!.byText('New issue')!);
+
+    const field = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input')[0], { what: 'the title field' });
+
+    host!.event(field.id, 'change', { value: 'Newest' });
+    await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input')[0]?.props.value === 'Newest', { what: 'the typed title' });
+    host!.event(field.id, 'submit', { value: 'Newest' });
+    await host!.waitFor(() => order('To do').includes('Newest'), { what: 'the new issue' });
+    expect(host!.calls.find(call => call.tool === 'create_issue')!.input).toMatchObject({ title: 'Newest', rank: 2560 });
+    expect(order('To do')).toEqual(['Second', 'First', 'Fix the login page', 'Newest', 'Third']);
+  });
+
+  test('with no room between two ranks, the column is renumbered, the moved card first', async () => {
+    await open({
+      fixtures: {
+        issues: [
+          { id: 'issue_a', title: 'First', status: 'todo', rank: 5 },
+          { id: 'issue_b', title: 'Second', status: 'todo', rank: 5 },
+          { id: 'issue_login', title: 'Fix the login page', status: 'doing' },
+        ],
+      },
+    });
+
+    drop('Fix the login page', 'To do', 1);
+    await host!.waitFor(() => host!.calls.filter(call => call.tool === 'update_issue').length === 3 && !host!.findAll(node => node.props.tone === 'danger').length, { what: 'the renumbering' });
+
+    expect(host!.calls.filter(call => call.tool === 'update_issue').map(call => call.input)).toEqual([
+      { id: 'issue_login', version: 1, status: 'todo', rank: 2048 },
+      { id: 'issue_a', version: 1, rank: 1024 },
+      { id: 'issue_b', version: 1, rank: 3072 },
+    ]);
+    await host!.waitFor(() => columnOf('Fix the login page') === 'To do', { what: 'the card in To do' });
+  });
+
+  test('dropped below a card with no rank, that card is ranked too, and nothing after it', async () => {
+    await open();
+
+    drop('Fix the login page', 'Doing', 1);
+    await host!.waitFor(() => column('Doing').props.count === 2 && host!.calls.filter(call => call.tool === 'update_issue').length === 2, { what: 'the writes and the read after' });
+    await host!.idle();
+
+    expect(host!.calls.filter(call => call.tool === 'update_issue').map(call => call.input)).toEqual([
+      { id: 'issue_login', version: 1, status: 'doing', rank: 2048 },
+      { id: 'issue_export', version: 1, rank: 1024 },
+    ]);
+    expect(host!.tree.get(column('Doing').id)!.children.map(id => host!.findAll(node => node.type === 'bry-text' && isInside(node, host!.tree.get(id)!))[0]!.props.text)).toEqual([
+      'Export to CSV',
+      'Fix the login page',
+    ]);
   });
 
   test('a move within its own column is sent back without a call', async () => {
@@ -160,7 +242,7 @@ describe('the board', () => {
     const line = await errorLine();
 
     expect(line.props.text).toStartWith('Couldn’t move “Fix the login page”. This issue changed since you read it.');
-    expect(host!.calls.find(call => call.tool === 'update_issue')).toMatchObject({ input: { id: 'issue_login', version: 1, status: 'doing' } });
+    expect(host!.calls.find(call => call.tool === 'update_issue')).toMatchObject({ input: { id: 'issue_login', version: 1, status: 'doing', rank: 1024 } });
     await host!.waitFor(() => columnOf('Fix the login page') === 'Done', { what: 'the board to catch up' });
     await host!.waitFor(() => boardNode().props.settled === card.id, { what: 'the card to be sent back' });
   });
