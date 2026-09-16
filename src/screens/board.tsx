@@ -1,5 +1,5 @@
-import { ToolError, navigate, tools } from '@brydio/app';
-import { mount, useBoard, useHost, useList, useMembers, useProjects, useRef, useState } from '@brydio/app/preact';
+import { ToolError, data, navigate, tools } from '@brydio/app';
+import { mount, useBoard, useCallback, useHost, useLayoutEffect, useMembers, useProjects, useRef, useState, useWatch } from '@brydio/app/preact';
 
 import { COLUMNS, columnIssues, dueText, placeCard, rankAfterLast, reason, type Issue, type Status } from '../issues.ts';
 import { IssueView } from './issue-view.tsx';
@@ -56,11 +56,55 @@ function Screen() {
   return open ? <IssueView id={open} onBack={() => setOpen(null)} /> : <Board onOpen={setOpen} />;
 }
 
-/** Everything in one page: a board of more than two hundred issues wants windowed columns. */
-const QUERY = { limit: 200 };
+/** A page of issues: the store's largest. */
+const PAGE = 200;
+
+/**
+ * How many cards a column draws at once. A column holds all its issues'
+ * count, and draws only the cards around what is in view, which it asks for
+ * with `range`, so 500 issues are a few dozen cards, not 500.
+ */
+export const WINDOW = 40;
+
+/** Every issue, read page by page, and read again whenever one changes. */
+function useIssues() {
+  const [state, setState] = useState<{ items: Issue[]; loading: boolean; error: Error | null }>({ items: [], loading: true, error: null });
+  const ticket = useRef(0);
+  const refetch = useCallback(async () => {
+    const mine = ++ticket.current;
+    const items: Issue[] = [];
+    let cursor: string | null = null;
+
+    try {
+      do {
+        const page: { items: Issue[]; nextCursor: string | null } = await data.list<Issue>('issues', { limit: PAGE, ...(cursor ? { cursor } : {}) });
+
+        items.push(...page.items);
+        cursor = page.nextCursor;
+      } while (cursor && mine === ticket.current);
+
+      if (mine === ticket.current) setState({ items, loading: false, error: null });
+    } catch (error) {
+      if (mine === ticket.current) setState(previous => ({ ...previous, loading: false, error: error instanceof Error ? error : new Error(String(error)) }));
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    void refetch();
+  }, [refetch]);
+  useWatch('issues', () => void refetch());
+
+  return { ...state, refetch };
+}
 
 function Board({ onOpen }: { onOpen: (id: string) => void }) {
-  const list = useList<Issue>('issues', QUERY, { watch: true });
+  const list = useIssues();
+  // Which cards each column draws: the window its last `range` asked for.
+  const [windows, setWindows] = useState<Record<Status, { start: number; end: number }>>({
+    todo: { start: 0, end: WINDOW },
+    doing: { start: 0, end: WINDOW },
+    done: { start: 0, end: WINDOW },
+  });
   const keys = useBoard<string, Status>();
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -210,10 +254,26 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
       >
         {COLUMNS.map(column => {
           const cards = columnIssues(issues, column.status);
+          const shown = windows[column.status];
+          const start = Math.min(shown.start, Math.max(0, cards.length - 1));
 
           return (
-            <bry-board-column key={column.status} ref={keys.column(column.status)} title={column.title} count={cards.length} empty="Nothing here.">
-              {cards.map(issue => (
+            <bry-board-column
+              key={column.status}
+              ref={keys.column(column.status)}
+              title={column.title}
+              count={cards.length}
+              start={start}
+              empty="Nothing here."
+              onRange={event => {
+                // A little either side of what is in view, so a small scroll draws nothing new.
+                const from = Math.max(0, event.detail.start - 10);
+                const to = Math.max(event.detail.end + 10, from + WINDOW);
+
+                setWindows(previous => ({ ...previous, [column.status]: { start: from, end: to } }));
+              }}
+            >
+              {cards.slice(start, Math.max(shown.end, start + 1)).map(issue => (
                 <bry-card
                   key={issue.id}
                   ref={keys.card(issue.id)}

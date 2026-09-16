@@ -3,7 +3,7 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.8.1)
+## What it does (version 0.9.0)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
@@ -27,6 +27,8 @@ made with the Brydio SDK (`../brydio-sdk`).
   project the issue will belong to, and it can't be changed there.
 - A card's actions button (**⋯**, named "Actions for" the issue's title for a
   screen reader) opens a menu with **Delete**.
+- **Holds hundreds of issues.** It reads them page by page, and each column
+  says how many it holds but draws only the cards around what is in view.
 - **Updates live.** An issue somebody else makes, moves or deletes, in another
   tab or through the assistant in a chat, shows on an open board without a
   reload.
@@ -69,6 +71,7 @@ Each of these waits on something in Brydio, listed in its gap log.
 | `src/screens/issue.tsx` | The same issue view, for a placement that names the `issue` screen with an issue selected. |
 | `src/issues.ts` | What an issue is, the order of the columns, and how a due date reads. |
 | `.brydio/samples.json` | The sample issues and labels `brydio publish` draws each screen with, for the pictures on the app's listing. |
+| `test/many.test.ts` | A board of 500 issues: every page read, each column windowed, a move still one write. |
 | `test/issue.test.ts` | Opens an issue from its card in the pretend Brydio, changes each field, and has somebody else change it first. |
 | `test/board.test.ts` | Runs the built board in a pretend Brydio with three sample issues, drops cards in other columns, changes issues as somebody else would, and checks what the board did. |
 
