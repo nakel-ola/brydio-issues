@@ -3,7 +3,7 @@
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK (`../brydio-sdk`).
 
-## What it does (version 0.9.1)
+## What it does (version 0.10.0)
 
 - Shows a **board** with three columns, **To do**, **Doing** and **Done**,
   each with how many issues it holds.
@@ -12,7 +12,8 @@ made with the Brydio SDK (`../brydio-sdk`).
 - **Move a card** by dragging it to another column, or with the keyboard:
   Space picks it up, the arrow keys move it, Space puts it down and Escape
   puts it back. A card lands where it was dropped, in its own column or
-  another, and stays there after a reload. If the move doesn't go through,
+  another, and stays there after a reload. A move that has to re-order other
+  cards too asks once, and either all of it happens or none does. If the move doesn't go through,
   the card goes back.
 - **Open an issue** by pressing its card. It opens in the same tab, and
   **Back to the board** returns. Its title, description, status, due date

@@ -150,15 +150,12 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
   const people = useMembers(issues.map(issue => issue.assignee));
   const error = failed ?? (list.error ? `Couldn’t load the issues. ${reason(list.error)}` : null);
 
-  /**
-   * Runs a write, or several in order, then reads the list again. False when
-   * one didn't go through, with the reason on the error line.
-   */
-  const write = async (tool: string, input: Record<string, unknown> | Record<string, unknown>[], words: string): Promise<boolean> => {
+  /** Runs a write, then reads the list again. False when it didn't go through, with the reason on the error line. */
+  const write = async (tool: string, input: Record<string, unknown>, words: string): Promise<boolean> => {
     setBusy(true);
 
     try {
-      for (const one of Array.isArray(input) ? input : [input]) await tools.call(tool, one);
+      await tools.call(tool, input);
       setFailed(null);
       await list.refetch();
 
@@ -257,19 +254,28 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
             return;
           }
 
-          // The status and the rank in one write, so one approval card. A
-          // column with no room left is renumbered after, as a last resort.
+          // The status and the rank in one write, so one approval card. A move
+          // that also has to rank other issues (a column with no room left, or
+          // an unranked issue above the drop) is one batch: still one card, and
+          // all or none of it happens.
           const placed = placeCard(issues, issue.id, move.to, move.position);
           const version = (id: string) => issues.find(one => one.id === id)!.version;
-          const inputs =
+          const words = `Couldn’t move “${issue.title}”.`;
+          const moved =
             'rank' in placed
-              ? [{ id: issue.id, version: issue.version, status: move.to, rank: placed.rank }]
-              : placed.renumber.map(change =>
-                  change.id === issue.id
-                    ? { id: issue.id, version: issue.version, status: move.to, rank: change.rank }
-                    : { id: change.id, version: version(change.id), rank: change.rank },
+              ? await write('update_issue', { id: issue.id, version: issue.version, status: move.to, rank: placed.rank }, words)
+              : await write(
+                  'batch_issues',
+                  {
+                    changes: placed.renumber.map(change => ({
+                      op: 'update',
+                      id: change.id,
+                      version: version(change.id),
+                      fields: change.id === issue.id ? { status: move.to, rank: change.rank } : { rank: change.rank },
+                    })),
+                  },
+                  words,
                 );
-          const moved = await write('update_issue', inputs, `Couldn’t move “${issue.title}”.`);
 
           if (!moved) keys.refuse(event);
         }}

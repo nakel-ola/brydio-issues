@@ -80,7 +80,7 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
 
 test('the manifest is one Brydio’s server accepts', () => {
   expect(validateManifest(manifest)).toMatchObject({ ok: true, problems: [] });
-  expect(manifest.version).toBe('0.9.1');
+  expect(manifest.version).toBe('0.10.0');
 });
 
 describe('the board', () => {
@@ -184,7 +184,7 @@ describe('the board', () => {
     expect(order('To do')).toEqual(['Second', 'First', 'Fix the login page', 'Newest', 'Third']);
   });
 
-  test('with no room between two ranks, the column is renumbered, the moved card first', async () => {
+  test('with no room between two ranks, the column is renumbered in exactly one batch_issues call, the moved card first', async () => {
     await open({
       fixtures: {
         issues: [
@@ -196,30 +196,81 @@ describe('the board', () => {
     });
 
     drop('Fix the login page', 'To do', 1);
-    await host!.waitFor(() => host!.calls.filter(call => call.tool === 'update_issue').length === 3 && !host!.findAll(node => node.props.tone === 'danger').length, { what: 'the renumbering' });
-
-    expect(host!.calls.filter(call => call.tool === 'update_issue').map(call => call.input)).toEqual([
-      { id: 'issue_login', version: 1, status: 'todo', rank: 2048 },
-      { id: 'issue_a', version: 1, rank: 1024 },
-      { id: 'issue_b', version: 1, rank: 3072 },
-    ]);
     await host!.waitFor(() => columnOf('Fix the login page') === 'To do', { what: 'the card in To do' });
+    await host!.idle();
+
+    // One call, so one approval card, and all or none of it happens.
+    expect(host!.calls.filter(call => call.tool !== 'list_issues').map(call => [call.tool, call.input, call.asked])).toEqual([
+      [
+        'batch_issues',
+        {
+          changes: [
+            { op: 'update', id: 'issue_login', version: 1, fields: { status: 'todo', rank: 2048 } },
+            { op: 'update', id: 'issue_a', version: 1, fields: { rank: 1024 } },
+            { op: 'update', id: 'issue_b', version: 1, fields: { rank: 3072 } },
+          ],
+        },
+        'allow',
+      ],
+    ]);
+    expect(host!.store!.records('issues').map(one => [one.id, one.status, one.rank])).toEqual([
+      ['issue_a', 'todo', 1024],
+      ['issue_b', 'todo', 3072],
+      ['issue_login', 'todo', 2048],
+    ]);
   });
 
   test('dropped below a card with no rank, that card is ranked too, and nothing after it', async () => {
     await open();
 
     drop('Fix the login page', 'Doing', 1);
-    await host!.waitFor(() => column('Doing').props.count === 2 && host!.calls.filter(call => call.tool === 'update_issue').length === 2, { what: 'the writes and the read after' });
+    await host!.waitFor(() => column('Doing').props.count === 2, { what: 'the move' });
     await host!.idle();
 
-    expect(host!.calls.filter(call => call.tool === 'update_issue').map(call => call.input)).toEqual([
-      { id: 'issue_login', version: 1, status: 'doing', rank: 2048 },
-      { id: 'issue_export', version: 1, rank: 1024 },
+    expect(host!.calls.filter(call => call.tool !== 'list_issues').map(call => [call.tool, call.input])).toEqual([
+      [
+        'batch_issues',
+        {
+          changes: [
+            { op: 'update', id: 'issue_login', version: 1, fields: { status: 'doing', rank: 2048 } },
+            { op: 'update', id: 'issue_export', version: 1, fields: { rank: 1024 } },
+          ],
+        },
+      ],
     ]);
     expect(host!.tree.get(column('Doing').id)!.children.map(id => host!.findAll(node => node.type === 'bry-text' && isInside(node, host!.tree.get(id)!))[0]!.props.text)).toEqual([
       'Export to CSV',
       'Fix the login page',
+    ]);
+  });
+
+  test('a batch refused because somebody else changed one issue sends the card back, changes nothing, and reads again', async () => {
+    await open({
+      asks: 'hold',
+      fixtures: {
+        issues: [
+          { id: 'issue_a', title: 'First', status: 'todo', rank: 5 },
+          { id: 'issue_b', title: 'Second', status: 'todo', rank: 5 },
+          { id: 'issue_login', title: 'Fix the login page', status: 'doing' },
+        ],
+      },
+    });
+
+    // While the person is still looking at the card, somebody else changes one of the issues it would rank.
+    const card = drop('Fix the login page', 'To do', 1);
+
+    await host!.waitFor(() => host!.calls.some(call => call.tool === 'batch_issues'), { what: 'the batch to wait on the person' });
+    host!.store!.put('issues', { id: 'issue_b', title: 'Second, renamed' });
+    await host!.answer('allow');
+
+    const line = await errorLine();
+
+    expect(line.props.text).toStartWith('Couldn’t move “Fix the login page”. Change 3 of 3: This issue changed since you read it.');
+    await host!.waitFor(() => boardNode().props.settled === card.id, { what: 'the card to go back' });
+    expect(host!.store!.records('issues').map(one => [one.id, one.status, one.rank])).toEqual([
+      ['issue_a', 'todo', 5],
+      ['issue_b', 'todo', 5],
+      ['issue_login', 'doing', undefined],
     ]);
   });
 
