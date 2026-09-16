@@ -1,0 +1,14 @@
+{
+  "collections": {
+    "issues": [
+      { "id": "issue_login", "title": "Fix the login page", "status": "todo", "labels": ["bug"], "rank": 1024 },
+      { "id": "issue_dark", "title": "Add a dark theme", "status": "todo", "rank": 2048, "due": "2026-10-03" },
+      { "id": "issue_export", "title": "Export to CSV", "status": "doing", "labels": ["data"], "rank": 1024 },
+      { "id": "issue_docs", "title": "Write the help page", "status": "done", "rank": 1024 }
+    ],
+    "labels": [
+      { "name": "bug", "colour": "danger" },
+      { "name": "data", "colour": "brand" }
+    ]
+  }
+}

@@ -55,6 +55,7 @@ Each of these waits on something in Brydio, listed in its gap log.
 | `src/screens/board.tsx` | The board. |
 | `src/screens/issue.tsx` | The placeholder for one issue. |
 | `src/issues.ts` | What an issue is, the order of the columns, and how a due date reads. |
+| `.brydio/samples.json` | The sample issues and labels `brydio publish` draws each screen with, for the pictures on the app's listing. |
 | `test/board.test.ts` | Runs the built board in a pretend Brydio with three sample issues, drops cards in other columns, changes issues as somebody else would, and checks what the board did. |
 
 ## Building and checking it
