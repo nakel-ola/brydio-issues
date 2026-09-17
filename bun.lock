@@ -50,16 +50,22 @@
 
     "@brydio/app/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
 
-    "@brydio/cli/@brydio/manifest": ["@brydio/manifest@file:../brydio-sdk/packages/manifest", {}],
+    "@brydio/cli/@brydio/manifest": ["@brydio/manifest@file:../brydio-sdk/packages/manifest", { "dependencies": { "zod": "4.6.2" } }],
 
     "@brydio/cli/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
 
-    "@brydio/fake-host/@brydio/app": ["@brydio/app@file:../brydio-sdk/packages/app", {}],
+    "@brydio/fake-host/@brydio/app": ["@brydio/app@file:../brydio-sdk/packages/app", { "dependencies": { "@brydio/ui": "0.1.0-alpha.0", "preact": "10.29.8" } }],
 
-    "@brydio/fake-host/@brydio/cli": ["@brydio/cli@file:../brydio-sdk/packages/cli", {}],
+    "@brydio/fake-host/@brydio/cli": ["@brydio/cli@file:../brydio-sdk/packages/cli", { "dependencies": { "@brydio/manifest": "0.1.0-alpha.0", "@brydio/ui": "0.1.0-alpha.0" }, "bin": { "brydio": "./bin/brydio.ts" } }],
 
-    "@brydio/fake-host/@brydio/manifest": ["@brydio/manifest@file:../brydio-sdk/packages/manifest", {}],
+    "@brydio/fake-host/@brydio/manifest": ["@brydio/manifest@file:../brydio-sdk/packages/manifest", { "dependencies": { "zod": "4.6.2" } }],
 
     "@brydio/fake-host/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
+
+    "@brydio/fake-host/@brydio/app/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
+
+    "@brydio/fake-host/@brydio/cli/@brydio/manifest": ["@brydio/manifest@file:../brydio-sdk/packages/manifest", { "dependencies": { "zod": "4.6.2" } }],
+
+    "@brydio/fake-host/@brydio/cli/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
   }
 }
