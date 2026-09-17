@@ -7,6 +7,7 @@ import { join } from 'node:path';
 const root = join(import.meta.dir, '..');
 const manifest = JSON.parse(readFileSync(join(root, '.brydio/app.json'), 'utf8'));
 const board = join(root, 'dist/screens/board.js');
+const issueScreen = join(root, 'dist/screens/issue.js');
 const PAUSE = 600;
 
 const FIXTURES = {
@@ -225,6 +226,28 @@ describe('the issue screen (A8-F01-S03)', () => {
     await host.mounted();
     await host.waitFor(() => of('bry-input', 'Title')?.props.value === 'Fix the login page', { what: 'the issue' });
     expect(host.findAll(node => String(node.props.text ?? '').startsWith('This issue belongs'))).toEqual([]);
+  });
+
+  test('reads go through data/get and data/list, never a generated read tool; tools/call only writes (G3)', async () => {
+    await openIssue('Fix the login page');
+    await host!.waitFor(() => of('bry-checkbox', 'data'), { what: 'the labels' });
+
+    const methods = host!.received.map(message => message.method);
+    const tools = host!.received.filter(message => message.method === 'tools/call').map(message => (message.params as { tool: string }).tool);
+
+    expect(methods).toContain('data/list');
+    expect(methods).toContain('data/get');
+    expect(tools.filter(tool => /^(get|list|search)_/.test(tool))).toEqual([]);
+  });
+
+  test('the issue screen on its own opens the selected issue, and Back closes it in the address (G14)', async () => {
+    host = FakeHost.start({ entry: issueScreen, manifest, fixtures: FIXTURES, context: { selection: { kind: 'item', id: 'issue_export' } } });
+    await host.mounted();
+    await host.waitFor(() => of('bry-input', 'Title')?.props.value === 'Export to CSV', { what: 'the issue' });
+
+    host.press(of('bry-button', 'Back to the board')!);
+    await host.waitFor(() => host!.byText('Open an issue from the board to see it here.'), { what: 'the item to be closed', timeout: 5_000 });
+    expect(host.received.some(message => message.method === 'ui/navigate' && JSON.stringify(message.params) === '{"to":{"kind":"item","id":null}}')).toBe(true);
   });
 
   test('the labels picker lists this instance’s labels, ticks save, and New label makes one and adds it', async () => {

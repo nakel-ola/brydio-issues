@@ -1,3 +1,4 @@
+import { navigate } from '@brydio/app';
 import { mount, useHost } from '@brydio/app/preact';
 
 import { IssueView } from './issue-view.tsx';
@@ -10,7 +11,9 @@ import { IssueView } from './issue-view.tsx';
 function IssueScreen() {
   const selection = useHost().selection as { kind?: unknown; id?: unknown } | undefined;
 
-  if (selection?.kind === 'item' && typeof selection.id === 'string') return <IssueView id={selection.id} onBack={() => undefined} />;
+  // Back closes the item with Brydio, which takes it out of the page's address (G14); the selection going draws the note below.
+  if (selection?.kind === 'item' && typeof selection.id === 'string')
+    return <IssueView id={selection.id} onBack={() => void navigate({ kind: 'item', id: null }).catch(() => undefined)} />;
 
   return (
     <bry-stack gap="2">
