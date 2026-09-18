@@ -1,7 +1,7 @@
 # Issues
 
 A simple issue tracker that lives inside a Brydio project. It is the first app
-made with the Brydio SDK (`../brydio-sdk`).
+made with the Brydio SDK.
 
 ## What it does (version 0.11.7)
 
@@ -80,20 +80,19 @@ Each of these waits on something in Brydio, listed in its gap log.
 
 ## Building and checking it
 
-You need [Bun](https://bun.sh) 1.3, and the SDK beside this folder at
-`../brydio-sdk`.
+You need [Bun](https://bun.sh) 1.3. `bun install` resolves the exact public SDK
+release used by this app. The SDK
+[changelog](https://github.com/nakel-ola/brydio-sdk/blob/main/CHANGELOG.md) is
+the compatibility record.
 
 ```sh
 cd brydio-issues
-bun install          # takes the SDK packages from ../brydio-sdk
+bun install          # installs the exact public SDK release
 bun run build        # writes dist/app.json and dist/screens/*.js, prints the size and fingerprint
 bun run validate     # checks everything Brydio would refuse
 bun test             # the board, end to end, in a pretend Brydio
 bun run check-types
 ```
-
-After changing the SDK, run `rm -rf node_modules && bun install` here so this folder picks up
-the new copy.
 
 `bun run dev` builds, serves `dist/` on `http://localhost:5174`, and builds
 again whenever a file changes.

@@ -5,40 +5,48 @@
     "": {
       "name": "brydio-issues",
       "dependencies": {
-        "@brydio/app": "file:../brydio-sdk/packages/app",
+        "@brydio/app": "0.1.0-alpha.4",
       },
       "devDependencies": {
-        "@brydio/cli": "file:../brydio-sdk/packages/cli",
-        "@brydio/fake-host": "file:../brydio-sdk/packages/fake-host",
-        "@brydio/manifest": "file:../brydio-sdk/packages/manifest",
-        "@brydio/ui": "file:../brydio-sdk/packages/ui",
+        "@brydio/cli": "0.1.0-alpha.4",
+        "@brydio/fake-host": "0.1.0-alpha.4",
+        "@brydio/manifest": "0.1.0-alpha.4",
+        "@brydio/ui": "0.1.0-alpha.4",
         "@types/bun": "1.4.2",
         "typescript": "5.9.3",
       },
     },
   },
-  "overrides": {
-    "@brydio/app": "file:../brydio-sdk/packages/app",
-    "@brydio/cli": "file:../brydio-sdk/packages/cli",
-    "@brydio/manifest": "file:../brydio-sdk/packages/manifest",
-    "@brydio/ui": "file:../brydio-sdk/packages/ui",
-  },
   "packages": {
-    "@brydio/app": ["@brydio/app@file:../brydio-sdk/packages/app", { "dependencies": { "@brydio/ui": "0.1.0-alpha.0", "preact": "10.29.8" } }],
+    "@brydio/app": ["@brydio/app@0.1.0-alpha.4", "", { "dependencies": { "@brydio/manifest": "0.1.0-alpha.4", "@brydio/ui": "0.1.0-alpha.4", "@prefresh/core": "1.5.11", "preact": "10.29.8" } }, "sha512-/O47k0eWstgU6HHfXUg76BpiRTiGPz60ul1Fge4NVzrxsFQMY7X3AOfwFhOHZIA1oQFDqjcc8ikbEwm5ME7CMw=="],
 
-    "@brydio/cli": ["@brydio/cli@file:../brydio-sdk/packages/cli", { "dependencies": { "@brydio/manifest": "0.1.0-alpha.0", "@brydio/ui": "0.1.0-alpha.0" }, "bin": { "brydio": "./bin/brydio.ts" } }],
+    "@brydio/cli": ["@brydio/cli@0.1.0-alpha.4", "", { "dependencies": { "@brydio/manifest": "0.1.0-alpha.4", "@brydio/ui": "0.1.0-alpha.4", "typescript": "5.9.3" }, "bin": { "brydio": "bin/brydio.js" } }, "sha512-dJ3CW+XGCO8iGb1TqsgdNDtxOcEK16UcB8gKW1kTOAbboMKKOxXrXxjjVtfDB0l5uKmhAWX+H79CVIjpoKENEw=="],
 
-    "@brydio/fake-host": ["@brydio/fake-host@file:../brydio-sdk/packages/fake-host", { "dependencies": { "@brydio/manifest": "0.1.0-alpha.0", "@brydio/ui": "0.1.0-alpha.0", "zod": "4.6.2" }, "devDependencies": { "@brydio/app": "0.1.0-alpha.0", "@brydio/cli": "0.1.0-alpha.0" } }],
+    "@brydio/fake-host": ["@brydio/fake-host@0.1.0-alpha.4", "", { "dependencies": { "@brydio/cli": "0.1.0-alpha.4", "@brydio/manifest": "0.1.0-alpha.4", "@brydio/ui": "0.1.0-alpha.4", "zod": "4.6.2" } }, "sha512-gybKjK1RvWpDf98iqYJHWuLZWrYr93FA9Ql1dPmOWurBnVzCm1pqUzLqPxaj8ZOv02hMZJzgHW/Q3dfOqqIptg=="],
 
-    "@brydio/manifest": ["@brydio/manifest@file:../brydio-sdk/packages/manifest", { "dependencies": { "zod": "4.6.2" } }],
+    "@brydio/manifest": ["@brydio/manifest@0.1.0-alpha.4", "", { "dependencies": { "zod": "4.6.2" } }, "sha512-EWQqwie6x2uwhcA48FU+PO6Uo+3vlnYQO95YrD9oNToI7wlfGfU/TCckT4/O6rSfKRKZCCu9xQYYSpLixYFhrg=="],
 
-    "@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
+    "@brydio/ui": ["@brydio/ui@0.1.0-alpha.4", "", { "dependencies": { "lit": "3.3.3" } }, "sha512-FCATvWvjLgL4mbTDx9NupSF4RKbn6etT+EpNG49KhdkrcUJyymQOiul+SK2bhGTXEEgkJ10F8MIYnsjfzZ3emQ=="],
+
+    "@lit-labs/ssr-dom-shim": ["@lit-labs/ssr-dom-shim@1.6.0", "", {}, "sha512-VHb0ALPMTlgKjM6yIxxoQNnpKyUKLD04VzeQdsiXkMqkvYlAHxq9glGLmgbb889/1GsohSOAjvQYoiBppXFqrQ=="],
+
+    "@lit/reactive-element": ["@lit/reactive-element@2.1.2", "", { "dependencies": { "@lit-labs/ssr-dom-shim": "^1.5.0" } }, "sha512-pbCDiVMnne1lYUIaYNN5wrwQXDtHaYtg7YEFPeW+hws6U47WeFvISGUWekPGKWOP1ygrs0ef0o1VJMk1exos5A=="],
+
+    "@prefresh/core": ["@prefresh/core@1.5.11", "", { "peerDependencies": { "preact": "^10.0.0 || ^11.0.0-0" } }, "sha512-Ml00PP8jeHaADxfQqxUs4+M5JS+T5J26UnvPVfsrmlpGw2I3e9XtM0DMeuzkmvg+Tn7VdHSMpLBrDPG0iHoDqQ=="],
 
     "@types/bun": ["@types/bun@1.4.2", "", { "dependencies": { "bun-types": "1.4.2" } }, "sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ=="],
 
     "@types/node": ["@types/node@22.20.3", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-DZmzkmwHzXrLPAXPyKNDzlIwMMUZCVacoD25ywdy5YTKGbOx/2ld+Q38Im2zJ0vBuZP5Prd3VZutKZyXwkOS8A=="],
 
+    "@types/trusted-types": ["@types/trusted-types@2.0.7", "", {}, "sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw=="],
+
     "bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
+
+    "lit": ["lit@3.3.3", "", { "dependencies": { "@lit/reactive-element": "^2.1.0", "lit-element": "^4.2.0", "lit-html": "^3.3.0" } }, "sha512-fycuvZg/hkpozL00lm1pEJH5nN/lr9ZXd6mJI2HSN4+Bzc+LDNdEApJ6HFbPkdFNHLvOplIIuJvxkS4XUxqirw=="],
+
+    "lit-element": ["lit-element@4.2.2", "", { "dependencies": { "@lit-labs/ssr-dom-shim": "^1.5.0", "@lit/reactive-element": "^2.1.0", "lit-html": "^3.3.0" } }, "sha512-aFKhNToWxoyhkNDmWZwEva2SlQia+jfG0fjIWV//YeTaWrVnOxD89dPKfigCUspXFmjzOEUQpOkejH5Ly6sG0w=="],
+
+    "lit-html": ["lit-html@3.3.3", "", { "dependencies": { "@types/trusted-types": "^2.0.2" } }, "sha512-el8M6jK2o3RXBnrSHX3ZKrsN8zEV63pSExTO1wYJz7QndGYZ8353e2a5PPX+qHe2aGayfnchQmkAojaWAREOIA=="],
 
     "preact": ["preact@10.29.8", "", { "peerDependencies": { "preact-render-to-string": ">=5" }, "optionalPeers": ["preact-render-to-string"] }, "sha512-ej2aVZ+vZ8WO7tvlQWRM9N63A0KzF9q4mWJfDUHgYaIofWY9hu74QdnQrjoPMmZi2/nZ5gN0bJCQF49xQqx09Q=="],
 
@@ -47,25 +55,5 @@
     "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "zod": ["zod@4.6.2", "", {}, "sha512-lh5RCAGFa1Cm2hjtNwLQhSs/AsqdWnTQaBER9fEwN/88pSh7KOtJavtBx/0VlkN/uFd61SwYmljLMDAsHlvzBQ=="],
-
-    "@brydio/app/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
-
-    "@brydio/cli/@brydio/manifest": ["@brydio/manifest@file:../brydio-sdk/packages/manifest", { "dependencies": { "zod": "4.6.2" } }],
-
-    "@brydio/cli/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
-
-    "@brydio/fake-host/@brydio/app": ["@brydio/app@file:../brydio-sdk/packages/app", { "dependencies": { "@brydio/ui": "0.1.0-alpha.0", "preact": "10.29.8" } }],
-
-    "@brydio/fake-host/@brydio/cli": ["@brydio/cli@file:../brydio-sdk/packages/cli", { "dependencies": { "@brydio/manifest": "0.1.0-alpha.0", "@brydio/ui": "0.1.0-alpha.0" }, "bin": { "brydio": "./bin/brydio.ts" } }],
-
-    "@brydio/fake-host/@brydio/manifest": ["@brydio/manifest@file:../brydio-sdk/packages/manifest", { "dependencies": { "zod": "4.6.2" } }],
-
-    "@brydio/fake-host/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
-
-    "@brydio/fake-host/@brydio/app/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
-
-    "@brydio/fake-host/@brydio/cli/@brydio/manifest": ["@brydio/manifest@file:../brydio-sdk/packages/manifest", { "dependencies": { "zod": "4.6.2" } }],
-
-    "@brydio/fake-host/@brydio/cli/@brydio/ui": ["@brydio/ui@file:../brydio-sdk/packages/ui", {}],
   }
 }

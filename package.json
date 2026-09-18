@@ -11,20 +11,14 @@
     "check-types": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@brydio/app": "file:../brydio-sdk/packages/app"
+    "@brydio/app": "0.1.0-alpha.4"
   },
   "devDependencies": {
-    "@brydio/cli": "file:../brydio-sdk/packages/cli",
-    "@brydio/fake-host": "file:../brydio-sdk/packages/fake-host",
-    "@brydio/manifest": "file:../brydio-sdk/packages/manifest",
-    "@brydio/ui": "file:../brydio-sdk/packages/ui",
+    "@brydio/cli": "0.1.0-alpha.4",
+    "@brydio/fake-host": "0.1.0-alpha.4",
+    "@brydio/manifest": "0.1.0-alpha.4",
+    "@brydio/ui": "0.1.0-alpha.4",
     "@types/bun": "1.4.2",
     "typescript": "5.9.3"
-  },
-  "overrides": {
-    "@brydio/app": "file:../brydio-sdk/packages/app",
-    "@brydio/cli": "file:../brydio-sdk/packages/cli",
-    "@brydio/manifest": "file:../brydio-sdk/packages/manifest",
-    "@brydio/ui": "file:../brydio-sdk/packages/ui"
   }
 }
