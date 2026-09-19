@@ -1,0 +1,105 @@
+{
+  "name": "issues",
+  "version": "0.11.7",
+  "displayName": "Issues",
+  "summary": "A board of your project's issues, which the assistant can work on too.",
+  "placements": [
+    {
+      "kind": "project-tab",
+      "screen": "board",
+      "label": "Issues",
+      "icon": "kanban"
+    },
+    {
+      "kind": "project-sidebar",
+      "screen": "board",
+      "label": "Issues",
+      "icon": "kanban"
+    },
+    {
+      "kind": "workspace-sidebar",
+      "screen": "board",
+      "label": "Issues",
+      "icon": "kanban"
+    }
+  ],
+  "data": {
+    "issues": {
+      "schema": {
+        "title": "string",
+        "status": [
+          "todo",
+          "doing",
+          "done"
+        ],
+        "assignee": "member?",
+        "labels": "string[]",
+        "body": "text?",
+        "project": "project?",
+        "due": "date?",
+        "rank": "number?"
+      },
+      "search": [
+        "title",
+        "body"
+      ],
+      "label": "issue"
+    },
+    "labels": {
+      "schema": {
+        "name": "string",
+        "colour": "token"
+      },
+      "label": "label"
+    }
+  },
+  "migrations": [
+    {
+      "version": "0.3.0",
+      "steps": [
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "due"
+        }
+      ]
+    },
+    {
+      "version": "0.5.0",
+      "steps": [
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "rank"
+        }
+      ]
+    }
+  ],
+  "tools": {
+    "generated": true,
+    "custom": []
+  },
+  "screens": {
+    "board": {
+      "entry": "screens/board.js"
+    },
+    "issue": {
+      "entry": "screens/issue.js"
+    }
+  },
+  "grants": {
+    "tools": [
+      "*"
+    ],
+    "collections": [
+      "*"
+    ],
+    "host": [
+      "navigate",
+      "members",
+      "projects",
+      "message"
+    ]
+  },
+  "sdk": "0.1.0-alpha.4"
+}
