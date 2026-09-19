@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "brydio build",
+    "build": "brydio build && bun scripts/repository-package.ts",
     "validate": "brydio validate",
     "dev": "brydio dev",
     "test": "bun test",
