@@ -82,7 +82,7 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
 
 test('the manifest is one Brydio’s server accepts', () => {
   expect(validateManifest(manifest)).toMatchObject({ ok: true, problems: [] });
-  expect(manifest.version).toBe('0.11.8');
+  expect(manifest.version).toBe('0.11.9');
 });
 
 describe('the board', () => {
