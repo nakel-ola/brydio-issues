@@ -2,6 +2,7 @@
 
 A simple issue tracker that lives inside a Brydio project. It is the first app
 made with the Brydio SDK.
+Testing now
 
 ## What it does (version 0.11.7)
 
