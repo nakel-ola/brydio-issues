@@ -1,6 +1,8 @@
 {
   "name": "issues",
-  "version": "0.11.9",
+  "version": "0.12.0",
+  "logo": { "color": "./brand/logo.svg", "mono": "./brand/logo-mono.svg" },
+  "icon": { "color": "./brand/icon.svg", "mono": "./brand/icon-mono.svg" },
   "displayName": "Issues",
   "summary": "A board of your project's issues, which the assistant can work on too.",
   "placements": [
