@@ -1,9 +1,39 @@
+import type { Issue, Module, ProjectPlan, Sprint, State } from '../model/schemas.ts';
+
 export const PROJECT_COLLECTIONS = [
   'issues', 'labels', 'states', 'sprints', 'modules', 'views', 'comments', 'reactions',
   'attachments', 'links', 'relations', 'subscriptions', 'votes', 'activity', 'project_plan',
 ] as const;
 
-export function scopeProjectRecords<T extends { project?: string }>(projectId: string, records: readonly T[]): T[] {
+export interface ProjectData {
+  issues: Issue[];
+  states: State[];
+  sprints: Sprint[];
+  modules: Module[];
+  plans: ProjectPlan[];
+}
+
+export const EMPTY_PROJECT_DATA: ProjectData = {
+  issues: [],
+  states: [],
+  sprints: [],
+  modules: [],
+  plans: [],
+};
+
+export function scopeProjectData(projectId: string | undefined, data: ProjectData): ProjectData {
+  if (!projectId) return data;
+
+  return {
+    issues: scopeProjectRecords(projectId, data.issues),
+    states: scopeProjectRecords(projectId, data.states),
+    sprints: scopeProjectRecords(projectId, data.sprints),
+    modules: scopeProjectRecords(projectId, data.modules),
+    plans: scopeProjectRecords(projectId, data.plans),
+  };
+}
+
+export function scopeProjectRecords<T extends { project?: string | null }>(projectId: string, records: readonly T[]): T[] {
   return records.filter(record => record.project === projectId);
 }
 
