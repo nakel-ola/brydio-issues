@@ -13,11 +13,15 @@ import {
 import { EMPTY_PROJECT_DATA, scopeProjectData, type ProjectData } from '../data/project-data.ts';
 import { readAll } from '../data/pages.ts';
 import { Home, ProjectOverview } from '../features/home/home.tsx';
+import { Archive } from '../features/archive/archive.tsx';
+import { Drafts, Inbox } from '../features/inbox/inbox.tsx';
 import { IssueCollection } from '../features/issues/issue-collection.tsx';
+import { Modules } from '../features/modules/modules.tsx';
 import { defaultPlanSection, PlanNavigation, type PlanSection } from '../features/navigation/plan-navigation.tsx';
 import { ProjectSettings } from '../features/settings/project-settings.tsx';
 import { Sprints } from '../features/sprints/sprints.tsx';
-import type { Issue, Label, Module, ProjectPlan, Sprint, State } from '../model/schemas.ts';
+import { Views } from '../features/views/views.tsx';
+import type { Issue, Label, Link, Module, ProjectPlan, Sprint, State, View } from '../model/schemas.ts';
 
 interface PlanDataState {
   data: ProjectData;
@@ -39,18 +43,20 @@ function usePlanData(projectId?: string): PlanDataState & { refresh: () => Promi
     );
 
     try {
-      const [issues, labels, states, sprints, modules, plans] = await Promise.all([
+      const [issues, labels, links, states, sprints, modules, views, plans] = await Promise.all([
         list<Issue>('issues'),
         list<Label>('labels'),
+        list<Link>('links'),
         list<State>('states'),
         list<Sprint>('sprints'),
         list<Module>('modules'),
+        list<View>('views'),
         list<ProjectPlan>('project_plan'),
       ]);
 
       if (mine !== ticket.current) return;
       setState({
-        data: scopeProjectData(projectId, { issues, labels, states, sprints, modules, plans }),
+        data: scopeProjectData(projectId, { issues, labels, links, states, sprints, modules, views, plans }),
         loading: false,
         error: null,
       });
@@ -178,6 +184,39 @@ function Section({ section, projectId, projectName, projects, data: projectData,
       />
     );
   }
+  if (section === 'modules') {
+    return (
+      <Modules
+        projectId={projectId}
+        projectName={projectName ?? 'Project'}
+        issues={projectData.issues}
+        labels={projectData.labels}
+        links={projectData.links}
+        states={projectData.states}
+        sprints={projectData.sprints}
+        modules={projectData.modules}
+        refresh={refresh}
+      />
+    );
+  }
+  if (section === 'views') {
+    return (
+      <Views
+        projectId={projectId}
+        projectName={projectName ?? 'Project'}
+        issues={projectData.issues}
+        labels={projectData.labels}
+        states={projectData.states}
+        sprints={projectData.sprints}
+        modules={projectData.modules}
+        views={projectData.views}
+        refresh={refresh}
+      />
+    );
+  }
+  if (section === 'inbox') return <Inbox projectName={projectName ?? 'Project'} issues={projectData.issues} refresh={refresh} />;
+  if (section === 'drafts') return <Drafts projectName={projectName ?? 'Project'} issues={projectData.issues} states={projectData.states} refresh={refresh} />;
+  if (section === 'archive') return <Archive projectName={projectName ?? 'Project'} issues={projectData.issues} refresh={refresh} />;
 
   return <FutureSection section={section} />;
 }

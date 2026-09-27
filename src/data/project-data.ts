@@ -1,4 +1,4 @@
-import type { Issue, Label, Module, ProjectPlan, Sprint, State } from '../model/schemas.ts';
+import type { Issue, Label, Link, Module, ProjectPlan, Sprint, State, View } from '../model/schemas.ts';
 
 export const PROJECT_COLLECTIONS = [
   'issues', 'labels', 'states', 'sprints', 'modules', 'views', 'comments', 'reactions',
@@ -8,18 +8,22 @@ export const PROJECT_COLLECTIONS = [
 export interface ProjectData {
   issues: Issue[];
   labels: Label[];
+  links: Link[];
   states: State[];
   sprints: Sprint[];
   modules: Module[];
+  views: View[];
   plans: ProjectPlan[];
 }
 
 export const EMPTY_PROJECT_DATA: ProjectData = {
   issues: [],
   labels: [],
+  links: [],
   states: [],
   sprints: [],
   modules: [],
+  views: [],
   plans: [],
 };
 
@@ -29,9 +33,11 @@ export function scopeProjectData(projectId: string | undefined, data: ProjectDat
   return {
     issues: scopeProjectRecords(projectId, data.issues),
     labels: scopeProjectRecords(projectId, data.labels),
+    links: scopeProjectRecords(projectId, data.links),
     states: scopeProjectRecords(projectId, data.states),
     sprints: scopeProjectRecords(projectId, data.sprints),
     modules: scopeProjectRecords(projectId, data.modules),
+    views: scopeProjectRecords(projectId, data.views),
     plans: scopeProjectRecords(projectId, data.plans),
   };
 }

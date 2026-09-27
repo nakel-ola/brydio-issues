@@ -34,7 +34,7 @@
     "states": { "schema": { "name": "string", "group": ["backlog", "unstarted", "started", "completed", "cancelled"], "colour": "token", "project": "project", "position": "number" }, "label": "state" },
     "sprints": { "schema": { "name": "string", "project": "project", "status": ["draft", "active", "completed", "cancelled"], "start": "date?", "end": "date?", "goal": "text?" }, "label": "sprint" },
     "modules": { "schema": { "name": "string", "project": "project", "status": ["backlog", "planned", "started", "paused", "completed", "cancelled"], "lead": "member?", "start": "date?", "end": "date?", "description": "text?" }, "label": "module" },
-    "views": { "schema": { "name": "string", "project": "project", "filters": "text", "display": "text", "shared": "boolean?" }, "label": "view" },
+    "views": { "schema": { "name": "string", "description": "text?", "project": "project", "filters": "text", "display": "text", "shared": "boolean?" }, "label": "view" },
     "comments": { "schema": { "issue": "string", "project": "project", "body": "text", "parent": "string?", "author": "member?", "edited": "boolean?" }, "label": "comment" },
     "reactions": { "schema": { "issue": "string", "project": "project", "comment": "string?", "emoji": "string", "member": "member" }, "label": "reaction" },
     "attachments": { "schema": { "issue": "string", "project": "project", "file_id": "string", "name": "string", "size": "number?", "mime": "string?" }, "label": "attachment" },
@@ -68,7 +68,8 @@
         { "op": "add", "collection": "issues", "field": "updated_by" },
         { "op": "add", "collection": "issues", "field": "estimate" },
         { "op": "add", "collection": "issues", "field": "branch" },
-        { "op": "add", "collection": "labels", "field": "project" }
+        { "op": "add", "collection": "labels", "field": "project" },
+        { "op": "add", "collection": "views", "field": "description" }
       ]
     }
   ],

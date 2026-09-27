@@ -21,12 +21,15 @@ function selectedItem(selection: unknown): string | null {
   return item?.kind === 'item' && typeof item.id === 'string' ? item.id : null;
 }
 
-export function IssueCollection({ projectId, projectName, title: heading = 'Issues', scopeSprintId, ignoreHostSelection = false, issues, labels, states, sprints, modules, refresh, onConfigureStates }: {
+export function IssueCollection({ projectId, projectName, title: heading = 'Issues', scopeSprintId, scopeModuleId, ignoreHostSelection = false, initialView = DEFAULT_ISSUE_VIEW, onViewChange, issues, labels, states, sprints, modules, refresh, onConfigureStates }: {
   projectId: string;
   projectName: string;
   title?: string;
   scopeSprintId?: string;
+  scopeModuleId?: string;
   ignoreHostSelection?: boolean;
+  initialView?: IssueViewState;
+  onViewChange?: (view: IssueViewState) => void;
   issues: readonly Issue[];
   labels: readonly Label[];
   states: readonly State[];
@@ -38,7 +41,11 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
   const host = useHost();
   const selected = ignoreHostSelection ? null : selectedItem(host.selection);
   const members = useMemberList();
-  const [view, setView] = useState<IssueViewState>(DEFAULT_ISSUE_VIEW);
+  const [view, setViewState] = useState<IssueViewState>(initialView);
+  const setView = (next: IssueViewState) => {
+    setViewState(next);
+    onViewChange?.(next);
+  };
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [creating, setCreating] = useState<CreateMode | null>(null);
   const [title, setTitle] = useState('');
@@ -48,7 +55,7 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
   const [target, setTarget] = useState('');
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const scopedIssues = scopeSprintId ? issues.filter(one => one.sprint === scopeSprintId) : issues;
+  const scopedIssues = issues.filter(one => (!scopeSprintId || one.sprint === scopeSprintId) && (!scopeModuleId || one.modules.includes(scopeModuleId)));
 
   if (selected) {
     return (
@@ -61,7 +68,11 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
   }
 
   const visible = sortIssues(
-    filterIssues(issues, { ...view.filters, projectId, archived: false, draft: false, ...(scopeSprintId ? { sprintId: scopeSprintId } : {}) }),
+    filterIssues(issues, {
+      ...view.filters, projectId, archived: false, draft: false,
+      ...(scopeSprintId ? { sprintId: scopeSprintId } : {}),
+      ...(scopeModuleId ? { moduleId: scopeModuleId } : {}),
+    }),
     view.sort,
   ).filter(one => view.showSubIssues || !one.parent);
   const defaultState = [...states].sort((left, right) => {
@@ -91,7 +102,7 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
         priority,
         assignees: [],
         labels: [],
-        modules: [],
+        modules: scopeModuleId ? [scopeModuleId] : [],
         ...(scopeSprintId ? { sprint: scopeSprintId } : {}),
         ...(target ? { target } : {}),
         archived: false,

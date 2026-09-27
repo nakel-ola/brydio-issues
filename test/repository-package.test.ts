@@ -19,10 +19,9 @@ test("the build leaves a repository manifest beside its screens", async () => {
   ).json();
 
   expect(repository).toEqual(published);
-  expect(await Bun.file(resolve(root, "bundle/screens/board.js")).text()).toBe(
-    await Bun.file(resolve(root, "dist/screens/board.js")).text(),
-  );
-  expect(await Bun.file(resolve(root, "bundle/screens/issue.js")).text()).toBe(
-    await Bun.file(resolve(root, "dist/screens/issue.js")).text(),
-  );
+  for (const screen of ["plan", "sprint", "issue"]) {
+    expect(await Bun.file(resolve(root, `bundle/screens/${screen}.js`)).text()).toBe(
+      await Bun.file(resolve(root, `dist/screens/${screen}.js`)).text(),
+    );
+  }
 });
