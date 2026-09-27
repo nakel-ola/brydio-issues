@@ -12,7 +12,7 @@
       "key": "sprint-folder", "kind": "project-sidebar", "screen": "sprint", "label": "Sprints", "icon": "folder",
       "children": {
         "tool": "list_sprint_children", "noun": "sprints", "cap": 30, "refreshSeconds": 30,
-        "create": { "tool": "create_sprint", "noun": "sprint", "titleField": "name" }
+        "create": { "tool": "create_sprint_from_folder", "noun": "sprint", "titleField": "name" }
       }
     },
     { "key": "plan-home", "kind": "workspace-sidebar", "screen": "plan", "label": "Plan", "icon": "list" }
@@ -76,6 +76,7 @@
     "generated": true,
     "custom": [
       { "name": "list_sprint_children", "description": "List this project's sprints for the Brydio sidebar.", "handler": "handlers/sprint-children.js", "input": { "folder": "string?", "project": "project?", "parent": "string?" }, "collection": "sprints" },
+      { "name": "create_sprint_from_folder", "description": "Create a draft sprint in the project that owns this Sprint folder.", "handler": "handlers/create-sprint.js", "input": { "name": "string" }, "write": true, "collection": "sprints" },
       { "name": "bulk_issues", "description": "Update, archive or delete a bounded set of issues together.", "handler": "handlers/bulk-issues.js", "input": { "project": "project", "action": ["update", "archive", "delete"], "ids": "string[]", "fields": "text?" }, "write": true, "collection": "issues" },
       { "name": "toggle_issue_signal", "description": "Toggle the calling member's vote, subscription or reaction on an issue.", "handler": "handlers/issue-signals.js", "input": { "project": "project", "issue": "string", "action": ["vote", "subscribe", "react"], "emoji": "string?" }, "write": true },
       { "name": "manage_relations", "description": "Create or remove both sides of an issue relation.", "handler": "handlers/relations.js", "input": { "project": "project", "issue": "string", "target": "string", "kind": ["blocks", "relates", "duplicates"], "remove": "boolean?" }, "write": true, "collection": "relations" }

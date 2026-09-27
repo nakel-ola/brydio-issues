@@ -16,6 +16,7 @@ import { Home, ProjectOverview } from '../features/home/home.tsx';
 import { IssueCollection } from '../features/issues/issue-collection.tsx';
 import { defaultPlanSection, PlanNavigation, type PlanSection } from '../features/navigation/plan-navigation.tsx';
 import { ProjectSettings } from '../features/settings/project-settings.tsx';
+import { Sprints } from '../features/sprints/sprints.tsx';
 import type { Issue, Label, Module, ProjectPlan, Sprint, State } from '../model/schemas.ts';
 
 interface PlanDataState {
@@ -160,6 +161,20 @@ function Section({ section, projectId, projectName, projects, data: projectData,
         modules={projectData.modules}
         refresh={refresh}
         onConfigureStates={() => onSelect('settings')}
+      />
+    );
+  }
+  if (section === 'sprints') {
+    return (
+      <Sprints
+        projectId={projectId}
+        projectName={projectName ?? 'Project'}
+        issues={projectData.issues}
+        labels={projectData.labels}
+        states={projectData.states}
+        sprints={projectData.sprints}
+        modules={projectData.modules}
+        refresh={refresh}
       />
     );
   }

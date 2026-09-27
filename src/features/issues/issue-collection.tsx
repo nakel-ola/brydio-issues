@@ -21,9 +21,12 @@ function selectedItem(selection: unknown): string | null {
   return item?.kind === 'item' && typeof item.id === 'string' ? item.id : null;
 }
 
-export function IssueCollection({ projectId, projectName, issues, labels, states, sprints, modules, refresh, onConfigureStates }: {
+export function IssueCollection({ projectId, projectName, title: heading = 'Issues', scopeSprintId, ignoreHostSelection = false, issues, labels, states, sprints, modules, refresh, onConfigureStates }: {
   projectId: string;
   projectName: string;
+  title?: string;
+  scopeSprintId?: string;
+  ignoreHostSelection?: boolean;
   issues: readonly Issue[];
   labels: readonly Label[];
   states: readonly State[];
@@ -32,7 +35,8 @@ export function IssueCollection({ projectId, projectName, issues, labels, states
   refresh: () => Promise<void>;
   onConfigureStates: () => void;
 }) {
-  const selected = selectedItem(useHost().selection);
+  const host = useHost();
+  const selected = ignoreHostSelection ? null : selectedItem(host.selection);
   const members = useMemberList();
   const [view, setView] = useState<IssueViewState>(DEFAULT_ISSUE_VIEW);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -44,6 +48,7 @@ export function IssueCollection({ projectId, projectName, issues, labels, states
   const [target, setTarget] = useState('');
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const scopedIssues = scopeSprintId ? issues.filter(one => one.sprint === scopeSprintId) : issues;
 
   if (selected) {
     return (
@@ -56,7 +61,7 @@ export function IssueCollection({ projectId, projectName, issues, labels, states
   }
 
   const visible = sortIssues(
-    filterIssues(issues, { ...view.filters, projectId, archived: false, draft: false }),
+    filterIssues(issues, { ...view.filters, projectId, archived: false, draft: false, ...(scopeSprintId ? { sprintId: scopeSprintId } : {}) }),
     view.sort,
   ).filter(one => view.showSubIssues || !one.parent);
   const defaultState = [...states].sort((left, right) => {
@@ -87,6 +92,7 @@ export function IssueCollection({ projectId, projectName, issues, labels, states
         assignees: [],
         labels: [],
         modules: [],
+        ...(scopeSprintId ? { sprint: scopeSprintId } : {}),
         ...(target ? { target } : {}),
         archived: false,
         draft: false,
@@ -182,7 +188,7 @@ export function IssueCollection({ projectId, projectName, issues, labels, states
   return (
     <bry-stack gap="4">
       <bry-stack direction="row" justify="between" align="center">
-        <bry-heading level={1} text="Issues" />
+        <bry-heading level={1} text={heading} />
         <bry-stack direction="row" gap="2">
           <bry-button label="Quick add" disabled={busy || Boolean(creating) || !defaultState} onPress={() => setCreating('quick')} />
           <bry-button label="New issue" variant="primary" disabled={busy || Boolean(creating) || !defaultState} onPress={() => setCreating('full')} />
@@ -272,10 +278,10 @@ export function IssueCollection({ projectId, projectName, issues, labels, states
 
       {visible.length === 0 ? (
         <bry-empty-state
-          title={issues.length ? 'No matching issues' : 'No issues yet'}
-          text={issues.length ? 'Change or clear the current filters.' : 'Capture the first thing this project needs.'}
-          action={issues.length ? 'Clear filters' : defaultState ? 'New issue' : undefined}
-          onAction={() => issues.length ? setView({ ...view, filters: {} }) : setCreating('full')}
+          title={scopedIssues.length ? 'No matching issues' : 'No issues yet'}
+          text={scopedIssues.length ? 'Change or clear the current filters.' : 'Capture the first thing this project needs.'}
+          action={scopedIssues.length ? 'Clear filters' : defaultState ? 'New issue' : undefined}
+          onAction={() => scopedIssues.length ? setView({ ...view, filters: {} }) : setCreating('full')}
         />
       ) : (
         collection
