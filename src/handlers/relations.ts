@@ -10,8 +10,8 @@ interface RelationsInput {
 
 const REVERSE = { blocks: 'blocked_by', relates: 'relates', duplicates: 'duplicated_by' } as const;
 
-async function existing(data: { list: HandlerDataList }, project: string, issue: string, target: string) {
-  const page = await data.list('relations', { filter: { project, issue, target }, limit: 200 });
+async function existing(data: { list: HandlerDataList }, project: string, issue: string, target: string, kind: string) {
+  const page = await data.list('relations', { filter: { project, issue, target, kind }, limit: 200 });
 
   return page.items;
 }
@@ -26,8 +26,8 @@ const manageRelations: Handler<RelationsInput> = async ({ project, issue, target
 
   const reverse = REVERSE[kind];
   const [forwardRows, reverseRows] = await Promise.all([
-    existing(data, project, issue, target),
-    existing(data, project, target, issue),
+    existing(data, project, issue, target, kind),
+    existing(data, project, target, issue, reverse),
   ]);
 
   if (remove) {

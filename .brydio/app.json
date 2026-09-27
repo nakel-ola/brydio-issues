@@ -77,6 +77,7 @@
     "custom": [
       { "name": "list_sprint_children", "description": "List this project's sprints for the Brydio sidebar.", "handler": "handlers/sprint-children.js", "input": { "folder": "string?", "project": "project?", "parent": "string?" }, "collection": "sprints" },
       { "name": "bulk_issues", "description": "Update, archive or delete a bounded set of issues together.", "handler": "handlers/bulk-issues.js", "input": { "project": "project", "action": ["update", "archive", "delete"], "ids": "string[]", "fields": "text?" }, "write": true, "collection": "issues" },
+      { "name": "toggle_issue_signal", "description": "Toggle the calling member's vote, subscription or reaction on an issue.", "handler": "handlers/issue-signals.js", "input": { "project": "project", "issue": "string", "action": ["vote", "subscribe", "react"], "emoji": "string?" }, "write": true },
       { "name": "manage_relations", "description": "Create or remove both sides of an issue relation.", "handler": "handlers/relations.js", "input": { "project": "project", "issue": "string", "target": "string", "kind": ["blocks", "relates", "duplicates"], "remove": "boolean?" }, "write": true, "collection": "relations" }
     ]
   },
