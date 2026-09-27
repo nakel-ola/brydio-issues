@@ -1,20 +1,40 @@
 import type { Issue, State } from '../../model/schemas.ts';
-import { issueIdentifier } from '../../model/issues.ts';
+import { groupIssues, issueIdentifier, type IssueGroup } from '../../model/issues.ts';
+import type { Module, Sprint } from '../../model/schemas.ts';
+import type { IssueProperty } from './issue-controls.tsx';
 
 const ROW_WINDOW = 200;
 
-export function IssueList({ issues, states, projectName, onOpen }: {
+export function IssueList({ issues, states, sprints, modules, projectName, group = 'state', showEmpty = false, properties, onOpen }: {
   issues: readonly Issue[];
   states: readonly State[];
+  sprints?: readonly Sprint[];
+  modules?: readonly Module[];
   projectName: string;
+  group?: IssueGroup;
+  showEmpty?: boolean;
+  properties?: readonly IssueProperty[];
   onOpen: (id: string) => void;
 }) {
-  const ordered = [...states].sort((left, right) => left.position - right.position);
-  const known = new Set(ordered.map(one => one.id));
+  const grouped = groupIssues(issues, group);
+  const entries = group === 'state'
+    ? [...states].sort((left, right) => left.position - right.position).map(one => [one.id, one.name] as const)
+    : group === 'priority'
+      ? ['urgent', 'high', 'medium', 'low', 'none'].map(one => [one, one[0]!.toUpperCase() + one.slice(1)] as const)
+      : group === 'sprint'
+        ? [...(sprints ?? []).map(one => [one.id, one.name] as const), ['none', 'No sprint'] as const]
+        : group === 'module'
+          ? [...(modules ?? []).map(one => [one.id, one.name] as const), ['none', 'No module'] as const]
+          : group === 'none' ? [['all', 'All issues'] as const]
+            : [...grouped.keys()].map(key => [key, key === 'unassigned' ? 'Unassigned' : key] as const);
+  const known = new Set(entries.map(([id]) => id));
   const groups = [
-    ...ordered.map(state => ({ id: state.id, name: state.name, issues: issues.filter(issue => issue.state === state.id) })),
-    { id: 'none', name: 'No state', issues: issues.filter(issue => !issue.state || !known.has(issue.state)) },
-  ].filter(group => group.issues.length > 0);
+    ...entries.map(([id, name]) => ({ id, name, issues: grouped.get(id) ?? [] })),
+    ...(group === 'state' && (grouped.get('none')?.length ?? 0) > 0 && !known.has('none')
+      ? [{ id: 'none', name: 'No state', issues: grouped.get('none') ?? [] }]
+      : []),
+  ].filter(one => showEmpty || one.issues.length > 0);
+  const shown = new Set(properties ?? ['identifier', 'priority']);
 
   return (
     <bry-stack gap="3">
@@ -33,12 +53,12 @@ export function IssueList({ issues, states, projectName, onOpen }: {
                 <bry-list-row
                   key={issue.id}
                   title={issue.title}
-                  description={issueIdentifier(issue, projectName)}
-                  meta={issue.priority && issue.priority !== 'none' ? issue.priority : undefined}
+                  description={shown.has('identifier') ? issueIdentifier(issue, projectName) : undefined}
+                  meta={shown.has('priority') && issue.priority && issue.priority !== 'none' ? issue.priority : undefined}
                   pressable
                   onPress={() => onOpen(issue.id)}
                 >
-                  <bry-text tone="muted" text={issueIdentifier(issue, projectName)} />
+                  {shown.has('identifier') && <bry-text tone="muted" text={issueIdentifier(issue, projectName)} />}
                 </bry-list-row>
               ))}
             {group.issues.length > ROW_WINDOW && (

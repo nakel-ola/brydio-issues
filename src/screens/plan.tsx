@@ -16,7 +16,7 @@ import { Home, ProjectOverview } from '../features/home/home.tsx';
 import { IssueCollection } from '../features/issues/issue-collection.tsx';
 import { defaultPlanSection, PlanNavigation, type PlanSection } from '../features/navigation/plan-navigation.tsx';
 import { ProjectSettings } from '../features/settings/project-settings.tsx';
-import type { Issue, Module, ProjectPlan, Sprint, State } from '../model/schemas.ts';
+import type { Issue, Label, Module, ProjectPlan, Sprint, State } from '../model/schemas.ts';
 
 interface PlanDataState {
   data: ProjectData;
@@ -38,8 +38,9 @@ function usePlanData(projectId?: string): PlanDataState & { refresh: () => Promi
     );
 
     try {
-      const [issues, states, sprints, modules, plans] = await Promise.all([
+      const [issues, labels, states, sprints, modules, plans] = await Promise.all([
         list<Issue>('issues'),
+        list<Label>('labels'),
         list<State>('states'),
         list<Sprint>('sprints'),
         list<Module>('modules'),
@@ -48,7 +49,7 @@ function usePlanData(projectId?: string): PlanDataState & { refresh: () => Promi
 
       if (mine !== ticket.current) return;
       setState({
-        data: scopeProjectData(projectId, { issues, states, sprints, modules, plans }),
+        data: scopeProjectData(projectId, { issues, labels, states, sprints, modules, plans }),
         loading: false,
         error: null,
       });
@@ -153,6 +154,7 @@ function Section({ section, projectId, projectName, projects, data: projectData,
         projectId={projectId}
         projectName={projectName ?? 'Project'}
         issues={projectData.issues}
+        labels={projectData.labels}
         states={projectData.states}
         sprints={projectData.sprints}
         modules={projectData.modules}

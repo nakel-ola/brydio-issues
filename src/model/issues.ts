@@ -9,8 +9,14 @@ export interface IssueFilters {
   priorities?: readonly Issue['priority'][];
   stateIds?: readonly string[];
   assigneeId?: string;
+  labelId?: string;
   sprintId?: string;
   moduleId?: string;
+  creatorId?: string;
+  startFrom?: string;
+  startTo?: string;
+  targetFrom?: string;
+  targetTo?: string;
   query?: string;
 }
 
@@ -24,8 +30,14 @@ export function filterIssues(issues: readonly Issue[], filters: IssueFilters): I
     if (filters.priorities?.length && !filters.priorities.includes(issue.priority)) return false;
     if (filters.stateIds?.length && (!issue.state || !filters.stateIds.includes(issue.state))) return false;
     if (filters.assigneeId && !issue.assignees.includes(filters.assigneeId)) return false;
+    if (filters.labelId && !issue.labels.includes(filters.labelId)) return false;
     if (filters.sprintId && issue.sprint !== filters.sprintId) return false;
     if (filters.moduleId && !issue.modules.includes(filters.moduleId)) return false;
+    if (filters.creatorId && issue.creator !== filters.creatorId) return false;
+    if (filters.startFrom && (!issue.start || issue.start < filters.startFrom)) return false;
+    if (filters.startTo && (!issue.start || issue.start > filters.startTo)) return false;
+    if (filters.targetFrom && (!issue.target || issue.target < filters.targetFrom)) return false;
+    if (filters.targetTo && (!issue.target || issue.target > filters.targetTo)) return false;
     if (query && !`${issue.title} ${issue.description ?? ''}`.toLocaleLowerCase().includes(query)) return false;
 
     return true;

@@ -1,14 +1,18 @@
 import { ToolError, navigate, tools } from '@brydio/app';
 import type { BryEvent } from '@brydio/ui';
-import { useHost, useState } from '@brydio/app/preact';
+import { useHost, useMemberList, useState } from '@brydio/app/preact';
 
+import { filterIssues, sortIssues } from '../../model/issues.ts';
 import { nextSequence } from '../../model/planning.ts';
-import type { Issue, Module, Sprint, State } from '../../model/schemas.ts';
+import type { Issue, Label, Module, Sprint, State } from '../../model/schemas.ts';
 import { IssueBoard } from './issue-board.tsx';
+import { IssueCalendar } from './issue-calendar.tsx';
+import { DEFAULT_ISSUE_VIEW, IssueControls, type IssueViewState } from './issue-controls.tsx';
 import { IssueDetail } from './issue-detail.tsx';
+import { IssueGantt } from './issue-gantt.tsx';
 import { IssueList } from './issue-list.tsx';
+import { IssueSpreadsheet } from './issue-spreadsheet.tsx';
 
-type Layout = 'list' | 'kanban';
 type CreateMode = 'quick' | 'full';
 
 function selectedItem(selection: unknown): string | null {
@@ -17,10 +21,11 @@ function selectedItem(selection: unknown): string | null {
   return item?.kind === 'item' && typeof item.id === 'string' ? item.id : null;
 }
 
-export function IssueCollection({ projectId, projectName, issues, states, sprints, modules, refresh, onConfigureStates }: {
+export function IssueCollection({ projectId, projectName, issues, labels, states, sprints, modules, refresh, onConfigureStates }: {
   projectId: string;
   projectName: string;
   issues: readonly Issue[];
+  labels: readonly Label[];
   states: readonly State[];
   sprints: readonly Sprint[];
   modules: readonly Module[];
@@ -28,7 +33,9 @@ export function IssueCollection({ projectId, projectName, issues, states, sprint
   onConfigureStates: () => void;
 }) {
   const selected = selectedItem(useHost().selection);
-  const [layout, setLayout] = useState<Layout>('list');
+  const members = useMemberList();
+  const [view, setView] = useState<IssueViewState>(DEFAULT_ISSUE_VIEW);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [creating, setCreating] = useState<CreateMode | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -48,7 +55,10 @@ export function IssueCollection({ projectId, projectName, issues, states, sprint
     );
   }
 
-  const visible = issues.filter(one => !one.archived && !one.draft);
+  const visible = sortIssues(
+    filterIssues(issues, { ...view.filters, projectId, archived: false, draft: false }),
+    view.sort,
+  ).filter(one => view.showSubIssues || !one.parent);
   const defaultState = [...states].sort((left, right) => {
     const wanted = (state: State) => state.group === 'unstarted' ? 0 : state.group === 'backlog' ? 1 : 2;
 
@@ -117,6 +127,57 @@ export function IssueCollection({ projectId, projectName, issues, states, sprint
   };
 
   const open = (id: string) => void navigate({ kind: 'item', id }).catch(failure => setFailed(failure instanceof Error ? failure.message : String(failure)));
+  const bulk = async (action: 'update' | 'archive' | 'delete', fields?: Record<string, unknown>) => {
+    if (selectedIds.length === 0) return;
+    setBusy(true);
+    setFailed(null);
+
+    try {
+      await tools.call('bulk_issues', {
+        project: projectId,
+        action,
+        ids: selectedIds.slice(0, 100),
+        ...(fields ? { fields: JSON.stringify(fields) } : {}),
+      });
+      setSelectedIds([]);
+      await refresh();
+    } catch (failure) {
+      setFailed(failure instanceof Error ? failure.message : String(failure));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const collection = view.layout === 'list' ? (
+    <IssueList
+      issues={visible}
+      states={states}
+      sprints={sprints}
+      modules={modules}
+      projectName={projectName}
+      group={view.group}
+      showEmpty={view.showEmptyGroups}
+      properties={view.properties}
+      onOpen={open}
+    />
+  ) : view.layout === 'kanban' ? (
+    <IssueBoard issues={visible} states={states} projectName={projectName} onOpen={open} onMove={move} />
+  ) : view.layout === 'calendar' ? (
+    <IssueCalendar issues={visible} projectName={projectName} mode={view.calendarMode} onOpen={open} />
+  ) : view.layout === 'gantt' ? (
+    <IssueGantt issues={visible} projectName={projectName} />
+  ) : (
+    <IssueSpreadsheet
+      issues={visible}
+      states={states}
+      sprints={sprints}
+      modules={modules}
+      projectName={projectName}
+      properties={view.properties}
+      selected={selectedIds}
+      onSelect={setSelectedIds}
+    />
+  );
 
   return (
     <bry-stack gap="4">
@@ -134,6 +195,28 @@ export function IssueCollection({ projectId, projectName, issues, states, sprint
         </bry-alert>
       )}
       {failed && <bry-alert tone="danger" title="Couldn’t update issues" description={failed} />}
+      <IssueControls
+        value={view}
+        states={states}
+        labels={labels}
+        sprints={sprints}
+        modules={modules}
+        members={members.members}
+        onChange={setView}
+        selectedCount={selectedIds.length}
+        onSelectVisible={() => setSelectedIds(selectedIds.length === visible.length ? [] : visible.slice(0, 100).map(one => one.id))}
+      />
+      {selectedIds.length > 0 && (
+        <bry-card padding="2">
+          <bry-stack direction="row" gap="2" align="center" wrap>
+            <bry-text text={`${selectedIds.length} issues selected`} />
+            <bry-button label="Set high priority" disabled={busy} onPress={() => void bulk('update', { priority: 'high' })} />
+            <bry-button label="Archive selected" disabled={busy} onPress={() => void bulk('archive')} />
+            <bry-button label="Delete selected" variant="danger" disabled={busy} onPress={() => void bulk('delete')} />
+            <bry-button label="Clear selection" disabled={busy} onPress={() => setSelectedIds([])} />
+          </bry-stack>
+        </bry-card>
+      )}
       {creating && (
         <bry-card padding="3">
           <bry-stack gap="3">
@@ -188,18 +271,14 @@ export function IssueCollection({ projectId, projectName, issues, states, sprint
       )}
 
       {visible.length === 0 ? (
-        <bry-empty-state title="No issues yet" text="Capture the first thing this project needs." action={defaultState ? 'New issue' : undefined} onAction={() => setCreating('full')} />
+        <bry-empty-state
+          title={issues.length ? 'No matching issues' : 'No issues yet'}
+          text={issues.length ? 'Change or clear the current filters.' : 'Capture the first thing this project needs.'}
+          action={issues.length ? 'Clear filters' : defaultState ? 'New issue' : undefined}
+          onAction={() => issues.length ? setView({ ...view, filters: {} }) : setCreating('full')}
+        />
       ) : (
-        <bry-tabs
-          label="Issue layout"
-          tabs={[{ id: 'list', label: 'List' }, { id: 'kanban', label: 'Kanban' }]}
-          value={layout}
-          variant="segmented"
-          onChange={(event: BryEvent<{ id: string }>) => setLayout(event.detail.id as Layout)}
-        >
-          <IssueList issues={visible} states={states} projectName={projectName} onOpen={open} />
-          <IssueBoard issues={visible} states={states} projectName={projectName} onOpen={open} onMove={move} />
-        </bry-tabs>
+        collection
       )}
     </bry-stack>
   );

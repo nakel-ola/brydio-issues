@@ -8,9 +8,12 @@ interface BulkIssuesInput {
 }
 
 const bulkIssues: Handler<BulkIssuesInput> = async ({ project, action, ids, fields }, { data }) => {
-  const unique = [...new Set(ids)].slice(0, 100);
+  if (ids.length > 100) throw new Error('Bulk actions accept at most 100 issues.');
+  const unique = [...new Set(ids)];
 
-  if (unique.length === 0) return { changed: 0 };
+  if (unique.length !== ids.length) throw new Error('Each issue may appear only once.');
+
+  if (unique.length === 0) return { updated: 0, archived: 0, deleted: 0 };
 
   const records = await Promise.all(unique.map(id => data.get('issues', id)));
 
@@ -24,6 +27,8 @@ const bulkIssues: Handler<BulkIssuesInput> = async ({ project, action, ids, fiel
     } catch {
       throw new Error('Fields must be a JSON object.');
     }
+
+    if (!update || Array.isArray(update) || typeof update !== 'object') throw new Error('Fields must be a JSON object.');
   }
 
   const changes = records.map(one => action === 'delete'
@@ -37,7 +42,11 @@ const bulkIssues: Handler<BulkIssuesInput> = async ({ project, action, ids, fiel
 
   await data.batch('issues', changes);
 
-  return { changed: changes.length };
+  return {
+    updated: action === 'update' ? changes.length : 0,
+    archived: action === 'archive' ? changes.length : 0,
+    deleted: action === 'delete' ? changes.length : 0,
+  };
 };
 
 export default bulkIssues;
