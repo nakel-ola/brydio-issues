@@ -13,6 +13,7 @@ import {
 import { EMPTY_PROJECT_DATA, scopeProjectData, type ProjectData } from '../data/project-data.ts';
 import { readAll } from '../data/pages.ts';
 import { Home, ProjectOverview } from '../features/home/home.tsx';
+import { IssueCollection } from '../features/issues/issue-collection.tsx';
 import { defaultPlanSection, PlanNavigation, type PlanSection } from '../features/navigation/plan-navigation.tsx';
 import { ProjectSettings } from '../features/settings/project-settings.tsx';
 import type { Issue, Module, ProjectPlan, Sprint, State } from '../model/schemas.ts';
@@ -147,25 +148,17 @@ function Section({ section, projectId, projectName, projects, data: projectData,
     );
   }
   if (section === 'issues') {
-    const issues = projectData.issues.filter(one => !one.archived && !one.draft);
-
     return (
-      <bry-stack gap="4">
-        <bry-stack direction="row" justify="between" align="center">
-          <bry-heading level={1} text="Issues" />
-          <bry-button label="New issue" variant="primary" />
-        </bry-stack>
-        {projectData.states.length === 0 && (
-          <bry-alert title="Set up the workflow" description="Create states before work starts moving.">
-            <bry-button label="Configure states" onPress={() => onSelect('settings')} />
-          </bry-alert>
-        )}
-        {issues.length === 0 ? (
-          <bry-empty-state title="No issues yet" text="Capture the first thing this project needs." action="New issue" />
-        ) : issues.map(issue => (
-          <bry-list-row key={issue.id} title={issue.title} description={issue.priority ?? 'none'} />
-        ))}
-      </bry-stack>
+      <IssueCollection
+        projectId={projectId}
+        projectName={projectName ?? 'Project'}
+        issues={projectData.issues}
+        states={projectData.states}
+        sprints={projectData.sprints}
+        modules={projectData.modules}
+        refresh={refresh}
+        onConfigureStates={() => onSelect('settings')}
+      />
     );
   }
 
