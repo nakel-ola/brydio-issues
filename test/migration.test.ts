@@ -57,4 +57,24 @@ describe('the clean Plan data layer', () => {
       'list', 'sprint', 'sprint-folder', 'plan-home',
     ]);
   });
+
+  test('upgrades the published Issues schema without dropping its records', () => {
+    const manifest = JSON.parse(readFileSync(join(import.meta.dir, '..', '.brydio', 'app.json'), 'utf8'));
+
+    expect(manifest.data.issues.schema).toMatchObject({
+      status: { type: ['todo', 'doing', 'done'], optional: true },
+      assignee: 'member?',
+      body: 'text?',
+      project: 'project?',
+      due: 'date?',
+    });
+    expect(manifest.data.labels.schema.project).toBe('project?');
+    expect(manifest.migrations).toContainEqual({
+      version: '1.0.0',
+      steps: expect.arrayContaining([
+        { op: 'add', collection: 'issues', field: 'archived' },
+        { op: 'add', collection: 'labels', field: 'project' },
+      ]),
+    });
+  });
 });

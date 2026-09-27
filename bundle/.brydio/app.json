@@ -57,7 +57,7 @@
       "schema": {
         "title": "string",
         "description": "text?",
-        "project": "project",
+        "project": "project?",
         "sequence": "number?",
         "state": "string?",
         "priority": {
@@ -97,11 +97,23 @@
         "updated_by": "member?",
         "estimate": "number?",
         "rank": "number?",
-        "branch": "string?"
+        "branch": "string?",
+        "status": {
+          "type": [
+            "todo",
+            "doing",
+            "done"
+          ],
+          "optional": true
+        },
+        "assignee": "member?",
+        "body": "text?",
+        "due": "date?"
       },
       "search": [
         "title",
-        "description"
+        "description",
+        "body"
       ],
       "label": "issue"
     },
@@ -109,7 +121,7 @@
       "schema": {
         "name": "string",
         "colour": "token",
-        "project": "project"
+        "project": "project?"
       },
       "label": "label"
     },
@@ -283,6 +295,133 @@
       "label": "project_plan"
     }
   },
+  "migrations": [
+    {
+      "version": "0.3.0",
+      "steps": [
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "due"
+        }
+      ]
+    },
+    {
+      "version": "0.5.0",
+      "steps": [
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "rank"
+        }
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "steps": [
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "description"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "sequence"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "state"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "priority"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "assignees"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "parent"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "sprint"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "modules"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "start"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "target"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "completed"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "archived"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "draft"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "inbox"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "inbox_until"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "creator"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "updated_by"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "estimate"
+        },
+        {
+          "op": "add",
+          "collection": "issues",
+          "field": "branch"
+        },
+        {
+          "op": "add",
+          "collection": "labels",
+          "field": "project"
+        }
+      ]
+    }
+  ],
   "tools": {
     "generated": true,
     "custom": [
