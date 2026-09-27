@@ -1,13 +1,13 @@
 {
   "name": "issues",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "logo": { "color": "./brand/logo.svg", "mono": "./brand/logo-mono.svg" },
   "icon": { "color": "./brand/icon.svg", "mono": "./brand/icon-mono.svg" },
   "displayName": "Plan",
   "summary": "Plan projects with issues, sprints, modules, views and analytics.",
   "placements": [
-    { "key": "list", "kind": "project-tab", "screen": "plan", "label": "List", "icon": "list" },
-    { "key": "sprint", "kind": "project-tab", "screen": "sprint", "label": "Sprint", "icon": "kanban" },
+    { "key": "list", "kind": "project-sidebar", "screen": "plan", "label": "List", "icon": "list" },
+    { "key": "sprint", "kind": "project-sidebar", "screen": "sprint", "label": "Sprint", "icon": "kanban" },
     {
       "key": "sprint-folder", "kind": "project-sidebar", "screen": "sprint", "label": "Sprints", "icon": "folder",
       "children": {

@@ -1,6 +1,6 @@
 {
   "name": "issues",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "logo": {
     "color": "./brand/logo.svg",
     "mono": "./brand/logo-mono.svg"
@@ -14,14 +14,14 @@
   "placements": [
     {
       "key": "list",
-      "kind": "project-tab",
+      "kind": "project-sidebar",
       "screen": "plan",
       "label": "List",
       "icon": "list"
     },
     {
       "key": "sprint",
-      "kind": "project-tab",
+      "kind": "project-sidebar",
       "screen": "sprint",
       "label": "Sprint",
       "icon": "kanban"

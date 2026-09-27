@@ -28,7 +28,7 @@ test('the committed repository bundle equals a fresh immutable Plan build', asyn
   const repository = await Bun.file(resolve(root, 'bundle/.brydio/app.json')).json();
 
   expect(repository).toEqual(published);
-  expect(repository.version).toBe('1.0.0');
+  expect(repository.version).toBe('1.0.1');
   expect(repository.displayName).toBe('Plan');
   expect(Object.keys(repository.screens).sort()).toEqual(['issue', 'plan', 'sprint']);
   expect(snapshot('bundle')).toEqual(snapshot('dist'));
