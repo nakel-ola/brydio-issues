@@ -1,4 +1,4 @@
-import { data } from '@brydio/app';
+import { data, navigate } from '@brydio/app';
 import {
   mount,
   useCallback,
@@ -20,9 +20,7 @@ import { Modules } from '../features/modules/modules.tsx';
 import {
   defaultPlanSection,
   PlanNavigation,
-  ProjectNavigation,
   type PlanSection,
-  type ProjectSection,
   type WorkspaceSection,
 } from '../features/navigation/plan-navigation.tsx';
 import { ProjectSettings } from '../features/settings/project-settings.tsx';
@@ -108,10 +106,13 @@ function usePlanData(projectId: string | undefined, section: PlanSection): PlanD
 }
 
 function PlanScreen() {
-  const projectId = useHost().placement.projectId;
+  const host = useHost();
+  const projectId = host.placement.projectId;
+  const route = host.route?.path ?? '/';
   const [section, setSection] = useState<PlanSection>(() => defaultPlanSection(projectId));
   const seenProject = useRef(projectId);
-  const loaded = usePlanData(projectId, section);
+  const routedSection: PlanSection = projectId ? projectSectionFromRoute(route) : section;
+  const loaded = usePlanData(projectId, routedSection);
   const projectIds = [
     ...new Set([
       ...(projectId ? [projectId] : []),
@@ -129,22 +130,38 @@ function PlanScreen() {
     setSection(defaultPlanSection(projectId));
   }
 
+  if (projectId) {
+    if (loaded.loading) {
+      return (
+        <bry-stack variant="page" align="stretch">
+          <bry-stack variant="section" gap="2">
+            <bry-skeleton shape="line" count={2} />
+            <bry-skeleton shape="row" count={4} />
+          </bry-stack>
+        </bry-stack>
+      );
+    }
+
+    return (
+      <>
+        {loaded.error && <bry-alert tone="danger" title="Plan couldn’t load" description={loaded.error} />}
+        <Section
+          section={routedSection}
+          route={route}
+          projectId={projectId}
+          projectName={projects.get(projectId)?.name ?? 'Project'}
+          projects={projects}
+          data={loaded.data}
+          onSelect={setSection}
+          refresh={loaded.refresh}
+        />
+      </>
+    );
+  }
+
   return (
     <bry-stack gap="4" align="stretch">
-      {!projectId && (
-        <PlanNavigation
-          section={section as WorkspaceSection}
-          onSelect={next => setSection(next)}
-        />
-      )}
-      {projectId && (
-        <bry-stack direction="row" justify="end">
-          <ProjectNavigation
-            section={section as ProjectSection}
-            onSelect={next => setSection(next)}
-          />
-        </bry-stack>
-      )}
+      <PlanNavigation section={section as WorkspaceSection} onSelect={next => setSection(next)} />
       {loaded.error && <bry-alert tone="danger" title="Plan couldn’t load" description={loaded.error} />}
       {loaded.loading ? (
         <bry-stack gap="2">
@@ -153,9 +170,8 @@ function PlanScreen() {
         </bry-stack>
       ) : (
         <Section
-          section={section}
-          projectId={projectId}
-          projectName={projectId ? projects.get(projectId)?.name ?? 'Project' : undefined}
+          section={routedSection}
+          route={route}
           projects={projects}
           data={loaded.data}
           onSelect={setSection}
@@ -166,7 +182,29 @@ function PlanScreen() {
   );
 }
 
-function Section({ section, projectId, projectName, projects, data: projectData, onSelect, refresh }: {
+function projectSectionFromRoute(route: string): PlanSection {
+  const section = route.split('/').filter(Boolean)[0];
+
+  if (section === 'settings' || section === 'modules' || section === 'views' || section === 'inbox' || section === 'drafts' || section === 'archive') {
+    return section;
+  }
+
+  return 'issues';
+}
+
+function issueIdFromRoute(route: string): string | undefined {
+  const value = route.match(/^\/issues\/([^/]+)(?:\/details)?\/?$/)?.[1];
+
+  if (!value) return undefined;
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function Section({ section, route = '/', projectId, projectName, projects, data: projectData, onSelect, refresh }: {
   section: PlanSection;
   projectId?: string;
   projectName?: string;
@@ -174,6 +212,7 @@ function Section({ section, projectId, projectName, projects, data: projectData,
   data: ProjectData;
   onSelect: (section: PlanSection) => void;
   refresh: () => Promise<void>;
+  route?: string;
 }) {
   if (!projectId) {
     if (section === 'home') return <Home data={projectData} projects={projects} />;
@@ -191,7 +230,7 @@ function Section({ section, projectId, projectName, projects, data: projectData,
         states={projectData.states}
         plan={projectData.plans.find(one => one.project === projectId)}
         onChanged={refresh}
-        onBack={() => onSelect('issues')}
+        onBack={() => void navigate({ kind: 'route', path: '/' }).catch(() => undefined)}
       />
     );
   }
@@ -205,8 +244,9 @@ function Section({ section, projectId, projectName, projects, data: projectData,
         states={projectData.states}
         sprints={projectData.sprints}
         modules={projectData.modules}
+        routeIssueId={issueIdFromRoute(route)}
         refresh={refresh}
-        onConfigureStates={() => onSelect('settings')}
+        onConfigureStates={() => void navigate({ kind: 'route', path: '/settings' }).catch(() => undefined)}
       />
     );
   }

@@ -58,7 +58,7 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
   host = FakeHost.start({
     entry,
     manifest,
-    context: { placement: { id: 'place_list', kind: 'project-tab', projectId: PROJECT } },
+    context: { placement: { id: 'place_list', kind: 'project-sidebar', projectId: PROJECT }, route: { path: '/' } },
     directory: { projects: [{ id: PROJECT, name: 'Alpha project' }], members: [{ id: 'user_ada', name: 'Ada Lovelace' }] },
     fixtures: {
       issues: ISSUES, labels: [], links: [{ id: 'link_m1', module: 'm1', project: PROJECT, title: 'Module spec', url: 'https://example.com/module' }],
@@ -67,12 +67,11 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
     ...options,
   });
   await host.mounted();
-  await host.waitFor(() => of('bry-menu'), { what: 'Plan navigation' });
+  await host.waitFor(() => of('bry-breadcrumb'), { what: 'Plan list' });
 }
 
 async function section(id: string, heading: string) {
-  const menu = of('bry-menu')!;
-  host!.raise('bry-menu', menu, 'select', { id });
+  host!.setContext({ route: { path: `/${id}` } });
   return host!.waitFor(() => of('bry-heading', heading), { what: heading });
 }
 

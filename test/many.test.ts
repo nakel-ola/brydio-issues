@@ -41,7 +41,7 @@ async function open() {
     manifest,
     fixtures: FIXTURES,
     directory: { projects: [{ id: PROJECT, name: 'Scale' }] },
-    context: { placement: { id: 'place_list', kind: 'project-tab', projectId: PROJECT } },
+    context: { placement: { id: 'place_list', kind: 'project-sidebar', projectId: PROJECT }, route: { path: '/' } },
   });
   await host.mounted();
   await host.waitFor(
@@ -50,19 +50,20 @@ async function open() {
     )?.some(item => item.label === 'Issues')))[0],
     { what: 'Plan list', timeout: 5_000 },
   );
-  await host.waitFor(() => host!.findAll(node => node.type === 'bry-badge').reduce((sum, node) => sum + Number(node.props.text), 0) === 499, { what: 'all project issues', timeout: 5_000 });
+  await host.waitFor(() => host!.findAll(node => node.type === 'bry-badge' && node.props.text === '499')[0], { what: 'all project issues', timeout: 5_000 });
 }
 
 async function layout(value: string, ready: () => unknown) {
-  const control = host!.findAll(node => node.type === 'bry-toggle-group' && node.props.label === 'Layout')[0]!;
-  host!.raise('bry-toggle-group', control, 'change', { values: [value] });
+  const label = value[0]!.toUpperCase() + value.slice(1);
+
+  host!.press(host!.byText(label)!);
   await host!.waitFor(ready, { what: `${value} layout`, timeout: 5_000 });
 }
 
 test('pages all 500 issues while every large layout keeps a bounded tree', async () => {
   await open();
 
-  expect(host!.findAll(node => node.type === 'bry-list-row').length).toBeLessThanOrEqual(300);
+  expect(host!.findAll(node => node.type === 'bry-list-row' && typeof node.props.identifier === 'string').length).toBeLessThanOrEqual(300);
   expect(host!.tree.size).toBeLessThan(5_000);
 
   await layout('kanban', () => host!.findAll(node => node.type === 'bry-board')[0]);

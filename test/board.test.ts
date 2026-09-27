@@ -8,7 +8,7 @@ const manifest = JSON.parse(readFileSync(join(root, '.brydio/app.json'), 'utf8')
 
 test('the rebuilt Plan manifest replaces the standalone board with keyed project surfaces', () => {
   expect(validateManifest(manifest)).toMatchObject({ ok: true, problems: [] });
-  expect(manifest.version).toBe('1.0.3');
+  expect(manifest.version).toBe('1.1.0');
   expect(manifest.screens.board).toBeUndefined();
   expect(manifest.placements.map((placement: { key: string; kind: string }) => [placement.key, placement.kind])).toEqual([
     ['list', 'project-sidebar'],

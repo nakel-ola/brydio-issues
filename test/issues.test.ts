@@ -36,7 +36,7 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
   host = FakeHost.start({
     entry,
     manifest,
-    context: { placement: { id: 'place_list', kind: 'project-tab', projectId: PROJECT } },
+    context: { placement: { id: 'place_list', kind: 'project-sidebar', projectId: PROJECT }, route: { path: '/' } },
     directory: {
       projects: [{ id: PROJECT, name: 'Alpha project' }],
       members: [{ id: 'user_ada', name: 'Ada Lovelace' }, { id: 'user_bo', name: 'Bo Diddley' }],
@@ -54,7 +54,7 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
   await host.mounted();
   await host.waitFor(() => host!.byText('First task'), { what: 'the issue list' });
   await host.waitFor(
-    () => host!.findAll(node => node.type === 'bry-list-row' && node.props.title === 'First task')[0]?.props.description === 'ALPH-1',
+    () => host!.findAll(node => node.type === 'bry-list-row' && node.props.title === 'First task')[0]?.props.identifier === 'ALPH-1',
     { what: 'the project issue identifier' },
   );
 }
@@ -73,10 +73,10 @@ describe('the Plan issue collection', () => {
 
     expect(host!.byText('To do')).toBeTruthy();
     expect(host!.byText('In progress')).toBeTruthy();
-    expect(host!.findAll(node => node.type === 'bry-list-row' && node.props.title === 'First task')[0]?.props.description).toBe('ALPH-1');
+    expect(host!.findAll(node => node.type === 'bry-list-row' && node.props.title === 'First task')[0]?.props).toMatchObject({ identifier: 'ALPH-1', variant: 'work', selectable: true });
 
-    host!.press(host!.byText('Quick add')!);
-    const title = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input' && node.props.label === 'Title')[0], { what: 'the issue title' });
+    host!.press(host!.byText('New work item')!);
+    const title = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input' && node.props.label === 'Issue title')[0], { what: 'the issue title' });
 
     host!.raise('bry-input', title, 'change', { value: 'Third task' });
     host!.raise('bry-input', title, 'submit', { value: 'Third task' });
@@ -85,13 +85,14 @@ describe('the Plan issue collection', () => {
     expect(host!.calls.find(call => call.tool === 'create_issue')?.input).toMatchObject({
       title: 'Third task', project: PROJECT, sequence: 3, state: 'todo', assignees: [], labels: [], modules: [], rank: 2048,
     });
-    expect(host!.findAll(node => node.type === 'bry-list-row' && node.props.description === 'ALPH-3')).toHaveLength(1);
+    expect(host!.findAll(node => node.type === 'bry-list-row' && node.props.identifier === 'ALPH-3')).toHaveLength(1);
   });
 
   test('creates a fully described issue with its chosen planning fields', async () => {
     await open();
 
-    host!.press(host!.byText('New issue')!);
+    host!.press(host!.byText('Add Issue')!);
+    const dialog = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-dialog' && node.props.open === true)[0], { what: 'the full issue dialog' });
     const title = await host!.waitFor(() => host!.findAll(node => node.type === 'bry-input' && node.props.label === 'Title')[0], { what: 'the full issue form' });
     const description = host!.findAll(node => node.type === 'bry-textarea' && node.props.label === 'Description')[0]!;
     const state = host!.findAll(node => node.type === 'bry-select' && node.props.label === 'State')[0]!;
@@ -103,7 +104,7 @@ describe('the Plan issue collection', () => {
     host!.raise('bry-select', state, 'change', { value: 'doing' });
     host!.raise('bry-select', priority, 'change', { value: 'urgent' });
     host!.raise('bry-date', target, 'change', { value: '2026-10-01' });
-    host!.press(host!.byText('Add issue')!);
+    host!.raise('bry-dialog', dialog, 'action', { id: 'add' });
     await host!.waitFor(() => host!.byText('Ship the release'), { what: 'the full issue' });
 
     expect(host!.calls.find(call => call.tool === 'create_issue')?.input).toMatchObject({
@@ -220,7 +221,7 @@ describe('the Plan issue collection', () => {
     await host!.waitFor(() => host!.byText('Child task') === undefined, { what: 'hidden sub-issues' });
     const empty = host!.findAll(node => node.type === 'bry-toggle' && node.props.label === 'Show empty groups')[0]!;
     host!.raise('bry-toggle', empty, 'change', { pressed: true });
-    expect(await host!.waitFor(() => host!.findAll(node => node.type === 'bry-item' && node.props.title === 'Done')[0], { what: 'empty state group' })).toBeTruthy();
+    expect(await host!.waitFor(() => host!.findAll(node => node.type === 'bry-heading' && node.props.text === 'Done')[0], { what: 'empty state group' })).toBeTruthy();
   });
 
   test('selects the visible set for bulk update, archive, and delete', async () => {
@@ -241,6 +242,16 @@ describe('the Plan issue collection', () => {
       { project: PROJECT, action: 'archive', ids: ['i1', 'i2'] },
       { project: PROJECT, action: 'delete', ids: ['i1', 'i2'] },
     ]);
+  });
+
+  test('opens a row on its own nested app page', async () => {
+    await open();
+
+    host!.press(host!.byText('First task')!);
+    expect(await host!.waitFor(
+      () => host!.received.some(message => message.method === 'ui/navigate' && JSON.stringify(message.params) === '{"to":{"kind":"route","path":"/issues/i1/details"}}'),
+      { what: 'the nested issue route' },
+    )).toBeTruthy();
   });
 });
 

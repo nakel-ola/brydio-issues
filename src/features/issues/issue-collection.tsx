@@ -21,12 +21,13 @@ function selectedItem(selection: unknown): string | null {
   return item?.kind === 'item' && typeof item.id === 'string' ? item.id : null;
 }
 
-export function IssueCollection({ projectId, projectName, title: heading = 'Issues', scopeSprintId, scopeModuleId, ignoreHostSelection = false, initialView = DEFAULT_ISSUE_VIEW, onViewChange, issues, labels, states, sprints, modules, refresh, onConfigureStates }: {
+export function IssueCollection({ projectId, projectName, title: heading = 'Issues', scopeSprintId, scopeModuleId, routeIssueId, ignoreHostSelection = false, initialView = DEFAULT_ISSUE_VIEW, onViewChange, issues, labels, states, sprints, modules, refresh, onConfigureStates }: {
   projectId: string;
   projectName: string;
   title?: string;
   scopeSprintId?: string;
   scopeModuleId?: string;
+  routeIssueId?: string;
   ignoreHostSelection?: boolean;
   initialView?: IssueViewState;
   onViewChange?: (view: IssueViewState) => void;
@@ -39,7 +40,7 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
   onConfigureStates: () => void;
 }) {
   const host = useHost();
-  const selected = ignoreHostSelection ? null : selectedItem(host.selection);
+  const selected = routeIssueId ?? (ignoreHostSelection ? null : selectedItem(host.selection));
   const members = useMemberList();
   const [view, setViewState] = useState<IssueViewState>(initialView);
   const setView = (next: IssueViewState) => {
@@ -62,7 +63,7 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
       <IssueDetail
         id={selected}
         currentProjectId={projectId}
-        onBack={() => void navigate({ kind: 'item', id: null }).catch(() => undefined)}
+        onBack={() => void navigate(routeIssueId ? { kind: 'route', path: '/' } : { kind: 'item', id: null }).catch(() => undefined)}
       />
     );
   }
@@ -143,7 +144,7 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
     }
   };
 
-  const open = (id: string) => void navigate({ kind: 'item', id }).catch(failure => setFailed(failure instanceof Error ? failure.message : String(failure)));
+  const open = (id: string) => void navigate({ kind: 'route', path: `/issues/${encodeURIComponent(id)}/details` }).catch(failure => setFailed(failure instanceof Error ? failure.message : String(failure)));
   const bulk = async (action: 'update' | 'archive' | 'delete', fields?: Record<string, unknown>) => {
     if (selectedIds.length === 0) return;
     setBusy(true);
@@ -171,10 +172,23 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
       states={states}
       sprints={sprints}
       modules={modules}
+      members={members.members}
       projectName={projectName}
       group={view.group}
       showEmpty={view.showEmptyGroups}
       properties={view.properties}
+      selected={selectedIds}
+      quickAddStateId={creating === 'quick' ? stateId || 'all' : null}
+      quickAddTitle={title}
+      quickAddBusy={busy}
+      onQuickAddTitle={setTitle}
+      onQuickAddSubmit={value => void create(value)}
+      onQuickAddCancel={() => { setCreating(null); setTitle(''); setStateId(''); }}
+      onSelect={id => setSelectedIds(current => current.includes(id) ? current.filter(one => one !== id) : [...current, id].slice(0, 100))}
+      onQuickAdd={nextState => {
+        setStateId(nextState ?? '');
+        setCreating('quick');
+      }}
       onOpen={open}
     />
   ) : view.layout === 'kanban' ? (
@@ -197,12 +211,15 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
   );
 
   return (
-    <bry-stack gap="3" align="stretch">
-      <bry-stack direction="row" justify="between" align="center" wrap>
-        <bry-breadcrumb
-          items={[{ id: 'project', label: projectName }, { id: 'issues', label: heading }]}
-          onSelect={() => void navigate({ kind: 'project', id: projectId }).catch(() => undefined)}
-        />
+    <bry-stack variant="page" align="stretch">
+      <bry-stack variant="toolbar" direction="row" justify="between" align="center">
+        <bry-stack direction="row" gap="2" align="center">
+          <bry-breadcrumb
+            items={[{ id: 'project', label: projectName }, { id: 'issues', label: heading }]}
+            onSelect={() => void navigate({ kind: 'project', id: projectId }).catch(() => undefined)}
+          />
+          {visible.length > 0 && <bry-badge text={String(visible.length)} tone="neutral" />}
+        </bry-stack>
         <bry-stack direction="row" gap="2" align="center" wrap>
           <IssueControls
             value={view}
@@ -215,11 +232,9 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
             selectedCount={selectedIds.length}
             onSelectVisible={() => setSelectedIds(selectedIds.length === visible.length ? [] : visible.slice(0, 100).map(one => one.id))}
           />
-          <bry-button label="Quick add" icon="add" size="sm" disabled={busy || Boolean(creating) || !defaultState} onPress={() => setCreating('quick')} />
-          <bry-button label="New issue" icon="add" size="sm" variant="primary" disabled={busy || Boolean(creating) || !defaultState} onPress={() => setCreating('full')} />
+          <bry-button label="Add Issue" icon="add" size="sm" variant="primary" disabled={busy || Boolean(creating) || !defaultState} onPress={() => setCreating('full')} />
         </bry-stack>
       </bry-stack>
-      <bry-separator />
 
       {states.length === 0 && (
         <bry-alert title="Set up the workflow" description="Create states before work starts moving.">
@@ -238,8 +253,14 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
           </bry-stack>
         </bry-card>
       )}
-      {creating && (
-        <bry-card padding="3">
+      {creating === 'full' && (
+        <bry-dialog
+          open
+          title="Add issue"
+          actions={[{ id: 'add', label: busy ? 'Adding…' : 'Add issue', tone: 'primary', disabled: busy || !title.trim() }]}
+          onAction={(event: BryEvent<{ id: string }>) => { if (event.detail.id === 'add') void create(); }}
+          onClose={() => { setCreating(null); setTitle(''); }}
+        >
           <bry-stack gap="3">
             <bry-input
               label="Title"
@@ -250,57 +271,53 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
               onChange={(event: BryEvent<{ value: string }>) => setTitle(event.detail.value)}
               onSubmit={(event: BryEvent<{ value: string }>) => void create(event.detail.value)}
             />
-            {creating === 'full' && (
-              <>
-                <bry-textarea
-                  label="Description"
-                  value={description}
-                  placeholder="Add context or acceptance criteria."
-                  disabled={busy}
-                  onChange={(event: BryEvent<{ value: string }>) => setDescription(event.detail.value)}
-                />
-                <bry-grid columns="3" gap="2">
-                  <bry-select
-                    label="State"
-                    value={stateId || defaultState?.id}
-                    options={states.slice(0, 50).map(one => ({ value: one.id, label: one.name }))}
-                    disabled={busy}
-                    onChange={(event: BryEvent<{ value: string }>) => setStateId(event.detail.value)}
-                  />
-                  <bry-select
-                    label="Priority"
-                    value={priority}
-                    options={['urgent', 'high', 'medium', 'low', 'none'].map(value => ({ value, label: value[0]!.toUpperCase() + value.slice(1) }))}
-                    disabled={busy}
-                    onChange={(event: BryEvent<{ value: string }>) => setPriority(event.detail.value)}
-                  />
-                  <bry-date
-                    label="Target date"
-                    value={target || undefined}
-                    disabled={busy}
-                    onChange={(event: BryEvent<{ value: string }>) => setTarget(event.detail.value)}
-                  />
-                </bry-grid>
-              </>
-            )}
-            <bry-stack direction="row" justify="end" gap="2">
-              <bry-button label="Cancel" disabled={busy} onPress={() => { setCreating(null); setTitle(''); }} />
-              <bry-button label="Add issue" variant="primary" disabled={busy || !title.trim()} onPress={() => void create()} />
-            </bry-stack>
+            <bry-textarea
+              label="Description"
+              value={description}
+              placeholder="Add context or acceptance criteria."
+              disabled={busy}
+              onChange={(event: BryEvent<{ value: string }>) => setDescription(event.detail.value)}
+            />
+            <bry-grid columns="3" gap="2">
+              <bry-select
+                label="State"
+                value={stateId || defaultState?.id}
+                options={states.slice(0, 50).map(one => ({ value: one.id, label: one.name }))}
+                disabled={busy}
+                onChange={(event: BryEvent<{ value: string }>) => setStateId(event.detail.value)}
+              />
+              <bry-select
+                label="Priority"
+                value={priority}
+                options={['urgent', 'high', 'medium', 'low', 'none'].map(value => ({ value, label: value[0]!.toUpperCase() + value.slice(1) }))}
+                disabled={busy}
+                onChange={(event: BryEvent<{ value: string }>) => setPriority(event.detail.value)}
+              />
+              <bry-date
+                label="Target date"
+                value={target || undefined}
+                disabled={busy}
+                onChange={(event: BryEvent<{ value: string }>) => setTarget(event.detail.value)}
+              />
+            </bry-grid>
           </bry-stack>
-        </bry-card>
+        </bry-dialog>
       )}
 
+      <bry-stack variant="scroll" align="stretch">
       {visible.length === 0 ? (
         <bry-empty-state
+          variant="plain"
+          icon="tasks"
           title={scopedIssues.length ? 'No matching issues' : 'No issues yet'}
           text={scopedIssues.length ? 'Change or clear the current filters.' : 'Capture the first thing this project needs.'}
-          action={scopedIssues.length ? 'Clear filters' : defaultState ? 'New issue' : undefined}
+          action={scopedIssues.length ? 'Clear filters' : defaultState ? 'Add Issue' : undefined}
           onAction={() => scopedIssues.length ? setView({ ...view, filters: {} }) : setCreating('full')}
         />
       ) : (
         collection
       )}
+      </bry-stack>
     </bry-stack>
   );
 }

@@ -63,6 +63,19 @@ export function IssueControls({ value, states, labels, sprints, modules, members
 
   return (
     <bry-stack direction="row" gap="2" align="center" wrap>
+      <bry-button-group label="Issue layout">
+        {LAYOUTS.map(layout => (
+          <bry-button
+            key={layout.value}
+            label={layout.label}
+            icon={layout.icon}
+            hideLabel
+            size="sm"
+            variant={value.layout === layout.value ? 'secondary' : 'ghost'}
+            onPress={() => onChange({ ...value, layout: layout.value })}
+          />
+        ))}
+      </bry-button-group>
       <bry-popover title="Display issues" align="end">
         <bry-button label="Display" icon="settings" size="sm" />
         <bry-stack gap="3">
@@ -104,11 +117,12 @@ export function IssueControls({ value, states, labels, sprints, modules, members
           <bry-toggle label="Show empty groups" pressed={value.showEmptyGroups} onChange={(event: BryEvent<{ pressed: boolean }>) => onChange({ ...value, showEmptyGroups: event.detail.pressed })} />
           <bry-toggle label="Show sub-issues" pressed={value.showSubIssues} onChange={(event: BryEvent<{ pressed: boolean }>) => onChange({ ...value, showSubIssues: event.detail.pressed })} />
           <bry-toggle-group type="multiple" label="Visible properties" items={PROPERTIES} values={value.properties} onChange={(event: BryEvent<{ values: string[] }>) => onChange({ ...value, properties: event.detail.values as IssueProperty[] })} />
+          <bry-button label={selectedCount ? `${selectedCount} selected` : 'Select visible'} size="sm" onPress={onSelectVisible} />
         </bry-stack>
       </bry-popover>
 
       <bry-popover title="Filter issues" align="end">
-        <bry-button label="Filters" icon="search" size="sm" />
+        <bry-button label="Filters" icon="search" hideLabel size="sm" variant="ghost" />
         <bry-stack gap="2">
           <bry-input
             label="Search"
@@ -134,7 +148,6 @@ export function IssueControls({ value, states, labels, sprints, modules, members
           <bry-button label="Clear filters" onPress={() => onChange({ ...value, filters: {} })} />
         </bry-stack>
       </bry-popover>
-      <bry-button label={selectedCount ? `${selectedCount} selected` : 'Select visible'} size="sm" onPress={onSelectVisible} />
     </bry-stack>
   );
 }

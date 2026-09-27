@@ -43,7 +43,7 @@ describe('Plan navigation', () => {
     host = FakeHost.start({
       entry,
       manifest,
-      context: { placement: { id: 'place_list', kind: 'project-tab', projectId: 'project_alpha' } },
+      context: { placement: { id: 'place_list', kind: 'project-sidebar', projectId: 'project_alpha' }, route: { path: '/' } },
       directory: { projects: [{ id: 'project_alpha', name: 'Alpha' }] },
       fixtures: { issues: [], states: [], sprints: [], modules: [], project_plan: [] },
     });
@@ -61,10 +61,13 @@ describe('Plan navigation', () => {
     ]);
     expect(by('bry-section-menu')).toBeUndefined();
     expect(host.byText('Overview')).toBeUndefined();
-    expect(host.byText('New issue')).toBeTruthy();
+    expect(host.byText('Add Issue')).toBeTruthy();
     expect(host.byText('Configure states')).toBeTruthy();
+    expect(host.findAll(node => node.type === 'bry-stack' && node.props.variant === 'page')).toHaveLength(1);
+    expect(host.findAll(node => node.type === 'bry-stack' && node.props.variant === 'toolbar')).toHaveLength(1);
 
     host.press(host.byText('Configure states')!);
+    expect(await host.waitFor(() => host!.received.some(message => message.method === 'ui/navigate' && JSON.stringify(message.params) === '{"to":{"kind":"route","path":"/settings"}}'), { what: 'the settings route' })).toBeTruthy();
     expect(await host.waitFor(() => host!.byText('Back to issues'), { what: 'project settings' })).toBeTruthy();
     expect(host.byText('Create default states')).toBeTruthy();
 
@@ -78,5 +81,27 @@ describe('Plan navigation', () => {
       { name: 'Cancelled', group: 'cancelled', colour: 'neutral', position: 4096, project: 'project_alpha' },
     ]);
     expect(host.byText('Create default states')).toBeUndefined();
+  });
+
+  test('opens an issue from its nested app route and returns to the list route', async () => {
+    host = FakeHost.start({
+      entry,
+      manifest,
+      context: {
+        placement: { id: 'place_list', kind: 'project-sidebar', projectId: 'project_alpha' },
+        route: { path: '/issues/i1' },
+      },
+      directory: { projects: [{ id: 'project_alpha', name: 'Alpha' }] },
+      fixtures: {
+        issues: [{ id: 'i1', title: 'Nested issue', project: 'project_alpha', sequence: 1, state: 'todo', assignees: [], labels: [], modules: [] }],
+        states: [{ id: 'todo', name: 'To do', group: 'unstarted', colour: 'neutral', project: 'project_alpha', position: 1 }],
+        sprints: [], modules: [], project_plan: [], comments: [], reactions: [], attachments: [], links: [], relations: [], subscriptions: [], votes: [], activity: [],
+      },
+    });
+    await host.mounted();
+
+    expect(await host.waitFor(() => host!.findAll(node => node.type === 'bry-input' && node.props.label === 'Title' && node.props.value === 'Nested issue')[0], { what: 'the nested issue' })).toBeTruthy();
+    host.press(host.byText('Back to issues')!);
+    await host.waitFor(() => host!.received.some(message => message.method === 'ui/navigate' && JSON.stringify(message.params) === '{"to":{"kind":"route","path":"/"}}'), { what: 'the list route' });
   });
 });
