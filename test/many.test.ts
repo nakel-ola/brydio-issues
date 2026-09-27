@@ -18,7 +18,7 @@ const MANY = Array.from({ length: 500 }, (_, at) => ({
   title: `Issue ${at}`,
   project: at === 499 ? 'project_elsewhere' : PROJECT,
   sequence: at + 1,
-  ...(at % 17 === 0 ? { status: at % 2 ? 'doing' : 'todo' } : { state: at < 350 ? 'todo' : at < 450 ? 'doing' : 'done' }),
+  state: at < 350 ? 'todo' : at < 450 ? 'doing' : 'done',
   priority: at % 5 === 0 ? 'high' : 'none',
   assignees: [], labels: [], modules: [], archived: false, draft: false,
   rank: (at + 1) * 1024,

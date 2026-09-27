@@ -20,17 +20,16 @@
   "data": {
     "issues": {
       "schema": {
-        "title": "string", "description": "text?", "project": "project?", "sequence": "number?", "state": "string?",
+        "title": "string", "description": "text?", "project": "project", "sequence": "number?", "state": "string?",
         "priority": { "type": ["urgent", "high", "medium", "low", "none"], "optional": true, "default": "none" }, "assignees": "string[]", "labels": "string[]",
         "parent": "string?", "sprint": "string?", "modules": "string[]", "start": "date?", "target": "date?",
         "completed": "date?", "archived": "boolean?", "draft": "boolean?",
         "inbox": { "type": ["none", "pending", "accepted", "declined", "snoozed"], "optional": true, "default": "none" }, "inbox_until": "date?",
-        "creator": "member?", "updated_by": "member?", "estimate": "number?", "rank": "number?", "branch": "string?",
-        "status": { "type": ["todo", "doing", "done"], "optional": true }, "assignee": "member?", "body": "text?", "due": "date?"
+        "creator": "member?", "updated_by": "member?", "estimate": "number?", "rank": "number?", "branch": "string?"
       },
       "search": ["title", "description"], "label": "issue"
     },
-    "labels": { "schema": { "name": "string", "colour": "token", "project": "project?" }, "label": "label" },
+    "labels": { "schema": { "name": "string", "colour": "token", "project": "project" }, "label": "label" },
     "states": { "schema": { "name": "string", "group": ["backlog", "unstarted", "started", "completed", "cancelled"], "colour": "token", "project": "project", "position": "number" }, "label": "state" },
     "sprints": { "schema": { "name": "string", "project": "project", "status": ["draft", "active", "completed", "cancelled"], "start": "date?", "end": "date?", "goal": "text?" }, "label": "sprint" },
     "modules": { "schema": { "name": "string", "project": "project", "status": ["backlog", "planned", "started", "paused", "completed", "cancelled"], "lead": "member?", "start": "date?", "end": "date?", "description": "text?" }, "label": "module" },
@@ -45,34 +44,6 @@
     "activity": { "schema": { "issue": "string", "project": "project", "actor": "member?", "action": "string", "detail": "text?" }, "label": "activity" },
     "project_plan": { "schema": { "project": "project", "lead": "member?", "priority": ["urgent", "high", "medium", "low", "none"], "start": "date?", "target": "date?", "default_view": ["list", "kanban", "calendar", "gantt", "spreadsheet"], "estimates": "boolean?" }, "label": "project_plan" }
   },
-  "migrations": [
-    {
-      "version": "1.0.0",
-      "steps": [
-        { "op": "add", "collection": "issues", "field": "description" },
-        { "op": "add", "collection": "issues", "field": "sequence" },
-        { "op": "add", "collection": "issues", "field": "state" },
-        { "op": "add", "collection": "issues", "field": "priority", "default": "none" },
-        { "op": "add", "collection": "issues", "field": "assignees" },
-        { "op": "add", "collection": "issues", "field": "parent" },
-        { "op": "add", "collection": "issues", "field": "sprint" },
-        { "op": "add", "collection": "issues", "field": "modules" },
-        { "op": "add", "collection": "issues", "field": "start" },
-        { "op": "add", "collection": "issues", "field": "target" },
-        { "op": "add", "collection": "issues", "field": "completed" },
-        { "op": "add", "collection": "issues", "field": "archived" },
-        { "op": "add", "collection": "issues", "field": "draft" },
-        { "op": "add", "collection": "issues", "field": "inbox", "default": "none" },
-        { "op": "add", "collection": "issues", "field": "inbox_until" },
-        { "op": "add", "collection": "issues", "field": "creator" },
-        { "op": "add", "collection": "issues", "field": "updated_by" },
-        { "op": "add", "collection": "issues", "field": "estimate" },
-        { "op": "add", "collection": "issues", "field": "branch" },
-        { "op": "add", "collection": "labels", "field": "project" },
-        { "op": "add", "collection": "views", "field": "description" }
-      ]
-    }
-  ],
   "tools": {
     "generated": true,
     "custom": [
@@ -86,5 +57,5 @@
   "screens": {
     "plan": { "entry": "screens/plan.js" }, "sprint": { "entry": "screens/sprint.js" }, "issue": { "entry": "screens/issue.js" }
   },
-  "grants": { "tools": ["*"], "collections": ["*"], "host": ["navigate", "members", "projects", "files", "chats", "message"] }
+  "grants": { "tools": ["*"], "collections": ["*"], "host": ["navigate", "members", "projects", "files", "message"] }
 }

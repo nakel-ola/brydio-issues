@@ -1,0 +1,1 @@
+var n=async({name:r},{tools:e})=>{let t=r?.trim()??"";if(!t)throw Error("Give the sprint a name.");if(t.length>200)throw Error("A sprint name is at most 200 characters.");return e.call("create_sprint",{name:t,status:"draft"})},i=n;export{i as default};

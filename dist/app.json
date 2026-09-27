@@ -1,6 +1,6 @@
 {
   "name": "issues",
-  "version": "0.12.0",
+  "version": "1.0.0",
   "logo": {
     "color": "./brand/logo.svg",
     "mono": "./brand/logo-mono.svg"
@@ -9,87 +9,363 @@
     "color": "./brand/icon.svg",
     "mono": "./brand/icon-mono.svg"
   },
-  "displayName": "Issues",
-  "summary": "A board of your project's issues, which the assistant can work on too.",
+  "displayName": "Plan",
+  "summary": "Plan projects with issues, sprints, modules, views and analytics.",
   "placements": [
     {
+      "key": "list",
       "kind": "project-tab",
-      "screen": "board",
-      "label": "Issues",
+      "screen": "plan",
+      "label": "List",
+      "icon": "list"
+    },
+    {
+      "key": "sprint",
+      "kind": "project-tab",
+      "screen": "sprint",
+      "label": "Sprint",
       "icon": "kanban"
     },
     {
+      "key": "sprint-folder",
       "kind": "project-sidebar",
-      "screen": "board",
-      "label": "Issues",
-      "icon": "kanban"
+      "screen": "sprint",
+      "label": "Sprints",
+      "icon": "folder",
+      "children": {
+        "tool": "list_sprint_children",
+        "noun": "sprints",
+        "cap": 30,
+        "refreshSeconds": 30,
+        "create": {
+          "tool": "create_sprint_from_folder",
+          "noun": "sprint",
+          "titleField": "name"
+        }
+      }
     },
     {
+      "key": "plan-home",
       "kind": "workspace-sidebar",
-      "screen": "board",
-      "label": "Issues",
-      "icon": "kanban"
+      "screen": "plan",
+      "label": "Plan",
+      "icon": "list"
     }
   ],
   "data": {
     "issues": {
       "schema": {
         "title": "string",
-        "status": [
-          "todo",
-          "doing",
-          "done"
-        ],
-        "assignee": "member?",
+        "description": "text?",
+        "project": "project",
+        "sequence": "number?",
+        "state": "string?",
+        "priority": {
+          "type": [
+            "urgent",
+            "high",
+            "medium",
+            "low",
+            "none"
+          ],
+          "optional": true,
+          "default": "none"
+        },
+        "assignees": "string[]",
         "labels": "string[]",
-        "body": "text?",
-        "project": "project?",
-        "due": "date?",
-        "rank": "number?"
+        "parent": "string?",
+        "sprint": "string?",
+        "modules": "string[]",
+        "start": "date?",
+        "target": "date?",
+        "completed": "date?",
+        "archived": "boolean?",
+        "draft": "boolean?",
+        "inbox": {
+          "type": [
+            "none",
+            "pending",
+            "accepted",
+            "declined",
+            "snoozed"
+          ],
+          "optional": true,
+          "default": "none"
+        },
+        "inbox_until": "date?",
+        "creator": "member?",
+        "updated_by": "member?",
+        "estimate": "number?",
+        "rank": "number?",
+        "branch": "string?"
       },
       "search": [
         "title",
-        "body"
+        "description"
       ],
       "label": "issue"
     },
     "labels": {
       "schema": {
         "name": "string",
-        "colour": "token"
+        "colour": "token",
+        "project": "project"
       },
       "label": "label"
+    },
+    "states": {
+      "schema": {
+        "name": "string",
+        "group": [
+          "backlog",
+          "unstarted",
+          "started",
+          "completed",
+          "cancelled"
+        ],
+        "colour": "token",
+        "project": "project",
+        "position": "number"
+      },
+      "label": "state"
+    },
+    "sprints": {
+      "schema": {
+        "name": "string",
+        "project": "project",
+        "status": [
+          "draft",
+          "active",
+          "completed",
+          "cancelled"
+        ],
+        "start": "date?",
+        "end": "date?",
+        "goal": "text?"
+      },
+      "label": "sprint"
+    },
+    "modules": {
+      "schema": {
+        "name": "string",
+        "project": "project",
+        "status": [
+          "backlog",
+          "planned",
+          "started",
+          "paused",
+          "completed",
+          "cancelled"
+        ],
+        "lead": "member?",
+        "start": "date?",
+        "end": "date?",
+        "description": "text?"
+      },
+      "label": "module"
+    },
+    "views": {
+      "schema": {
+        "name": "string",
+        "description": "text?",
+        "project": "project",
+        "filters": "text",
+        "display": "text",
+        "shared": "boolean?"
+      },
+      "label": "view"
+    },
+    "comments": {
+      "schema": {
+        "issue": "string",
+        "project": "project",
+        "body": "text",
+        "parent": "string?",
+        "author": "member?",
+        "edited": "boolean?"
+      },
+      "label": "comment"
+    },
+    "reactions": {
+      "schema": {
+        "issue": "string",
+        "project": "project",
+        "comment": "string?",
+        "emoji": "string",
+        "member": "member"
+      },
+      "label": "reaction"
+    },
+    "attachments": {
+      "schema": {
+        "issue": "string",
+        "project": "project",
+        "file_id": "string",
+        "name": "string",
+        "size": "number?",
+        "mime": "string?"
+      },
+      "label": "attachment"
+    },
+    "links": {
+      "schema": {
+        "issue": "string?",
+        "module": "string?",
+        "project": "project",
+        "title": "string",
+        "url": "string"
+      },
+      "label": "link"
+    },
+    "relations": {
+      "schema": {
+        "issue": "string",
+        "target": "string",
+        "project": "project",
+        "kind": [
+          "blocks",
+          "blocked_by",
+          "relates",
+          "duplicates",
+          "duplicated_by"
+        ]
+      },
+      "label": "relation"
+    },
+    "subscriptions": {
+      "schema": {
+        "issue": "string",
+        "project": "project",
+        "member": "member"
+      },
+      "label": "subscription"
+    },
+    "votes": {
+      "schema": {
+        "issue": "string",
+        "project": "project",
+        "member": "member"
+      },
+      "label": "vote"
+    },
+    "activity": {
+      "schema": {
+        "issue": "string",
+        "project": "project",
+        "actor": "member?",
+        "action": "string",
+        "detail": "text?"
+      },
+      "label": "activity"
+    },
+    "project_plan": {
+      "schema": {
+        "project": "project",
+        "lead": "member?",
+        "priority": [
+          "urgent",
+          "high",
+          "medium",
+          "low",
+          "none"
+        ],
+        "start": "date?",
+        "target": "date?",
+        "default_view": [
+          "list",
+          "kanban",
+          "calendar",
+          "gantt",
+          "spreadsheet"
+        ],
+        "estimates": "boolean?"
+      },
+      "label": "project_plan"
     }
   },
-  "migrations": [
-    {
-      "version": "0.3.0",
-      "steps": [
-        {
-          "op": "add",
-          "collection": "issues",
-          "field": "due"
-        }
-      ]
-    },
-    {
-      "version": "0.5.0",
-      "steps": [
-        {
-          "op": "add",
-          "collection": "issues",
-          "field": "rank"
-        }
-      ]
-    }
-  ],
   "tools": {
     "generated": true,
-    "custom": []
+    "custom": [
+      {
+        "name": "list_sprint_children",
+        "description": "List this project's sprints for the Brydio sidebar.",
+        "handler": "handlers/sprint-children.js",
+        "input": {
+          "folder": "string?",
+          "project": "project?",
+          "parent": "string?"
+        },
+        "collection": "sprints"
+      },
+      {
+        "name": "create_sprint_from_folder",
+        "description": "Create a draft sprint in the project that owns this Sprint folder.",
+        "handler": "handlers/create-sprint.js",
+        "input": {
+          "name": "string"
+        },
+        "write": true,
+        "collection": "sprints"
+      },
+      {
+        "name": "bulk_issues",
+        "description": "Update, archive or delete a bounded set of issues together.",
+        "handler": "handlers/bulk-issues.js",
+        "input": {
+          "project": "project",
+          "action": [
+            "update",
+            "archive",
+            "delete"
+          ],
+          "ids": "string[]",
+          "fields": "text?"
+        },
+        "write": true,
+        "collection": "issues"
+      },
+      {
+        "name": "toggle_issue_signal",
+        "description": "Toggle the calling member's vote, subscription or reaction on an issue.",
+        "handler": "handlers/issue-signals.js",
+        "input": {
+          "project": "project",
+          "issue": "string",
+          "action": [
+            "vote",
+            "subscribe",
+            "react"
+          ],
+          "emoji": "string?"
+        },
+        "write": true
+      },
+      {
+        "name": "manage_relations",
+        "description": "Create or remove both sides of an issue relation.",
+        "handler": "handlers/relations.js",
+        "input": {
+          "project": "project",
+          "issue": "string",
+          "target": "string",
+          "kind": [
+            "blocks",
+            "relates",
+            "duplicates"
+          ],
+          "remove": "boolean?"
+        },
+        "write": true,
+        "collection": "relations"
+      }
+    ]
   },
   "screens": {
-    "board": {
-      "entry": "screens/board.js"
+    "plan": {
+      "entry": "screens/plan.js"
+    },
+    "sprint": {
+      "entry": "screens/sprint.js"
     },
     "issue": {
       "entry": "screens/issue.js"
@@ -106,8 +382,9 @@
       "navigate",
       "members",
       "projects",
+      "files",
       "message"
     ]
   },
-  "sdk": "0.1.0-alpha.7"
+  "sdk": "0.1.0-alpha.8"
 }

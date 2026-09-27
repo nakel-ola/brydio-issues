@@ -6,15 +6,14 @@ export const SPRINT_STATUSES = ['draft', 'active', 'completed', 'cancelled'] as 
 export const MODULE_STATUSES = ['backlog', 'planned', 'started', 'paused', 'completed', 'cancelled'] as const;
 
 export const ISSUE_SCHEMA = {
-  title: 'string', description: 'text?', project: 'project?', sequence: 'number?', state: 'string?',
+  title: 'string', description: 'text?', project: 'project', sequence: 'number?', state: 'string?',
   priority: { type: PRIORITIES, optional: true, default: 'none' }, assignees: 'string[]', labels: 'string[]', parent: 'string?', sprint: 'string?',
   modules: 'string[]', start: 'date?', target: 'date?', completed: 'date?', archived: 'boolean?',
   draft: 'boolean?', inbox: { type: ['none', 'pending', 'accepted', 'declined', 'snoozed'], optional: true, default: 'none' }, inbox_until: 'date?',
   creator: 'member?', updated_by: 'member?', estimate: 'number?', rank: 'number?', branch: 'string?',
-  status: { type: ['todo', 'doing', 'done'], optional: true }, assignee: 'member?', body: 'text?', due: 'date?',
 } as const;
 
-export const LABEL_SCHEMA = { name: 'string', colour: 'token', project: 'project?' } as const;
+export const LABEL_SCHEMA = { name: 'string', colour: 'token', project: 'project' } as const;
 export const STATE_SCHEMA = { name: 'string', group: STATE_GROUPS, colour: 'token', project: 'project', position: 'number' } as const;
 export const SPRINT_SCHEMA = { name: 'string', project: 'project', status: SPRINT_STATUSES, start: 'date?', end: 'date?', goal: 'text?' } as const;
 export const MODULE_SCHEMA = { name: 'string', project: 'project', status: MODULE_STATUSES, lead: 'member?', start: 'date?', end: 'date?', description: 'text?' } as const;

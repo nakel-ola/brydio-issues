@@ -1,18 +1,11 @@
-import { defaultBridge, navigate, tools } from '@brydio/app';
+import { navigate, tools } from '@brydio/app';
+import { api, type FileSummary } from '@brydio/api';
 import type { BryEvent } from '@brydio/ui';
 import { useLayoutEffect, useState } from '@brydio/app/preact';
 
 import { nextSequence } from '../../model/planning.ts';
 import type { Attachment, Issue, Link, Relation } from '../../model/schemas.ts';
 import { issueIdentifier } from '../../model/issues.ts';
-
-interface ProjectFile {
-  id: string;
-  name: string;
-  kind: string;
-  mimeType?: string;
-  size?: number;
-}
 
 const fileKind = (kind: string) => ['document', 'spreadsheet', 'presentation', 'pdf', 'image', 'video', 'audio', 'code', 'archive', 'folder'].includes(kind) ? kind : 'other';
 
@@ -128,13 +121,13 @@ export function IssueAttachments({ issue, attachments, onRefresh }: {
   attachments: readonly Attachment[];
   onRefresh: () => Promise<void>;
 }) {
-  const [files, setFiles] = useState<ProjectFile[]>([]);
+  const [files, setFiles] = useState<FileSummary[]>([]);
   const [fileId, setFileId] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     let active = true;
-    void defaultBridge().callApi<ProjectFile[]>('files.list', { projectId: issue.project }, 'files')
+    void api.files.list(issue.project)
       .then(found => { if (active) setFiles(found); })
       .catch(failure => { if (active) setError(failure instanceof Error ? failure.message : String(failure)); });
 
