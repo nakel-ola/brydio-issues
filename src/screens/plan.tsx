@@ -12,14 +12,20 @@ import {
 import { EMPTY_PROJECT_DATA, RefreshQueue, scopeProjectData, type ProjectData } from '../data/project-data.ts';
 import { readAll } from '../data/pages.ts';
 import { Analytics } from '../features/analytics/analytics.tsx';
-import { Home, ProjectOverview } from '../features/home/home.tsx';
 import { Archive } from '../features/archive/archive.tsx';
+import { Home } from '../features/home/home.tsx';
 import { Drafts, Inbox } from '../features/inbox/inbox.tsx';
 import { IssueCollection } from '../features/issues/issue-collection.tsx';
 import { Modules } from '../features/modules/modules.tsx';
-import { defaultPlanSection, PlanNavigation, type PlanSection } from '../features/navigation/plan-navigation.tsx';
+import {
+  defaultPlanSection,
+  PlanNavigation,
+  ProjectNavigation,
+  type PlanSection,
+  type ProjectSection,
+  type WorkspaceSection,
+} from '../features/navigation/plan-navigation.tsx';
 import { ProjectSettings } from '../features/settings/project-settings.tsx';
-import { Sprints } from '../features/sprints/sprints.tsx';
 import { Views } from '../features/views/views.tsx';
 import { YourWork } from '../features/work/your-work.tsx';
 import type { Issue, Label, Link, Module, ProjectPlan, Sprint, State, View } from '../model/schemas.ts';
@@ -31,11 +37,10 @@ interface PlanDataState {
 }
 
 function watchedCollections(section: PlanSection): string[] {
-  if (section === 'home' || section === 'overview') return ['issues', 'states', 'sprints', 'modules', 'project_plan'];
+  if (section === 'home') return ['issues', 'states', 'sprints', 'modules', 'project_plan'];
   if (section === 'analytics') return ['issues', 'states'];
   if (section === 'your-work') return ['issues', 'states'];
   if (section === 'issues') return ['issues', 'states', 'sprints', 'modules', 'labels'];
-  if (section === 'sprints') return ['issues', 'states', 'sprints', 'labels', 'modules'];
   if (section === 'modules') return ['issues', 'states', 'modules', 'links', 'labels'];
   if (section === 'views') return ['issues', 'states', 'views', 'labels', 'modules'];
   if (section === 'settings') return ['states', 'project_plan'];
@@ -125,8 +130,21 @@ function PlanScreen() {
   }
 
   return (
-    <bry-stack gap="4">
-      <PlanNavigation projectId={projectId} section={section} onSelect={setSection} />
+    <bry-stack gap="4" align="stretch">
+      {!projectId && (
+        <PlanNavigation
+          section={section as WorkspaceSection}
+          onSelect={next => setSection(next)}
+        />
+      )}
+      {projectId && (
+        <bry-stack direction="row" justify="end">
+          <ProjectNavigation
+            section={section as ProjectSection}
+            onSelect={next => setSection(next)}
+          />
+        </bry-stack>
+      )}
       {loaded.error && <bry-alert tone="danger" title="Plan couldn’t load" description={loaded.error} />}
       {loaded.loading ? (
         <bry-stack gap="2">
@@ -165,14 +183,15 @@ function Section({ section, projectId, projectName, projects, data: projectData,
     return <FutureSection section={section} />;
   }
 
-  if (section === 'overview') return <ProjectOverview projectId={projectId} projectName={projectName ?? 'Project'} data={projectData} />;
   if (section === 'settings') {
     return (
       <ProjectSettings
         projectId={projectId}
+        projectName={projectName ?? 'Project'}
         states={projectData.states}
         plan={projectData.plans.find(one => one.project === projectId)}
         onChanged={refresh}
+        onBack={() => onSelect('issues')}
       />
     );
   }
@@ -188,20 +207,6 @@ function Section({ section, projectId, projectName, projects, data: projectData,
         modules={projectData.modules}
         refresh={refresh}
         onConfigureStates={() => onSelect('settings')}
-      />
-    );
-  }
-  if (section === 'sprints') {
-    return (
-      <Sprints
-        projectId={projectId}
-        projectName={projectName ?? 'Project'}
-        issues={projectData.issues}
-        labels={projectData.labels}
-        states={projectData.states}
-        sprints={projectData.sprints}
-        modules={projectData.modules}
-        refresh={refresh}
       />
     );
   }
@@ -243,7 +248,7 @@ function Section({ section, projectId, projectName, projects, data: projectData,
 }
 
 const LABELS: Partial<Record<PlanSection, string>> = {
-  views: 'Views', sprints: 'Sprints', modules: 'Modules', inbox: 'Inbox', drafts: 'Drafts', archive: 'Archive',
+  views: 'Views',
 };
 
 function FutureSection({ section }: { section: PlanSection }) {

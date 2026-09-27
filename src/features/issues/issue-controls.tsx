@@ -62,84 +62,79 @@ export function IssueControls({ value, states, labels, sprints, modules, members
   const chosen = (raw: string) => raw === 'all' ? undefined : raw;
 
   return (
-    <bry-stack gap="2">
-      <bry-stack direction="row" justify="between" align="center" wrap>
-        <bry-toggle-group
-          type="single"
-          label="Layout"
-          items={[...LAYOUTS]}
-          values={[value.layout]}
-          variant="outline"
-          size="sm"
-          onChange={(event: BryEvent<{ values: string[] }>) => {
-            const layout = event.detail.values[0] as IssueLayout | undefined;
+    <bry-stack direction="row" gap="2" align="center" wrap>
+      <bry-popover title="Display issues" align="end">
+        <bry-button label="Display" icon="settings" size="sm" />
+        <bry-stack gap="3">
+          <bry-toggle-group
+            type="single"
+            label="Layout"
+            items={[...LAYOUTS]}
+            values={[value.layout]}
+            variant="outline"
+            size="sm"
+            onChange={(event: BryEvent<{ values: string[] }>) => {
+              const layout = event.detail.values[0] as IssueLayout | undefined;
 
-            if (layout) onChange({ ...value, layout });
-          }}
-        />
-        <bry-stack direction="row" gap="2" align="center">
-          <bry-popover title="Filter issues" align="end">
-            <bry-button label="Filters" icon="search" />
-            <bry-stack gap="2">
-              <bry-input
-                label="Search"
-                value={value.filters.query ?? ''}
-                placeholder="Title or description"
-                onChange={(event: BryEvent<{ value: string }>) => changeFilters({ query: event.detail.value || undefined })}
-              />
-              <bry-grid columns="2" gap="2">
-                <bry-select label="Filter state" value={value.filters.stateIds?.[0] ?? 'all'} options={[option('all', 'All states'), ...states.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ stateIds: chosen(event.detail.value) ? [event.detail.value] : undefined })} />
-                <bry-select label="Filter priority" value={value.filters.priorities?.[0] ?? 'all'} options={['all', 'urgent', 'high', 'medium', 'low', 'none'].map(one => option(one, one[0]!.toUpperCase() + one.slice(1)))} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ priorities: chosen(event.detail.value) ? [event.detail.value as 'urgent' | 'high' | 'medium' | 'low' | 'none'] : undefined })} />
-                <bry-select label="Filter assignee" value={value.filters.assigneeId ?? 'all'} options={[option('all', 'All assignees'), ...members.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ assigneeId: chosen(event.detail.value) })} />
-                <bry-select label="Filter label" value={value.filters.labelId ?? 'all'} options={[option('all', 'All labels'), ...labels.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ labelId: chosen(event.detail.value) })} />
-                <bry-select label="Filter sprint" value={value.filters.sprintId ?? 'all'} options={[option('all', 'All sprints'), ...sprints.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ sprintId: chosen(event.detail.value) })} />
-                <bry-select label="Filter module" value={value.filters.moduleId ?? 'all'} options={[option('all', 'All modules'), ...modules.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ moduleId: chosen(event.detail.value) })} />
-                <bry-select label="Filter creator" value={value.filters.creatorId ?? 'all'} options={[option('all', 'All creators'), ...members.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ creatorId: chosen(event.detail.value) })} />
-              </bry-grid>
-              <bry-grid columns="2" gap="2">
-                <bry-date label="Start from" value={value.filters.startFrom} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ startFrom: event.detail.value || undefined })} />
-                <bry-date label="Start through" value={value.filters.startTo} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ startTo: event.detail.value || undefined })} />
-                <bry-date label="Target from" value={value.filters.targetFrom} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ targetFrom: event.detail.value || undefined })} />
-                <bry-date label="Target through" value={value.filters.targetTo} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ targetTo: event.detail.value || undefined })} />
-              </bry-grid>
-              <bry-button label="Clear filters" onPress={() => onChange({ ...value, filters: {} })} />
-            </bry-stack>
-          </bry-popover>
-
-          <bry-popover title="Display issues" align="end">
-            <bry-button label="Display" icon="settings" />
-            <bry-stack gap="2">
-              <bry-select
-                label="Group by"
-                value={value.group}
-                options={['none', 'state', 'priority', 'assignee', 'sprint', 'module'].map(one => option(one, one[0]!.toUpperCase() + one.slice(1)))}
-                onChange={(event: BryEvent<{ value: string }>) => onChange({ ...value, group: event.detail.value as IssueGroup })}
-              />
-              <bry-select
-                label="Order by"
-                value={value.sort.field}
-                options={['rank', 'priority', 'title', 'createdAt', 'updatedAt', 'target'].map(one => option(one, one === 'rank' ? 'Manual order' : one))}
-                onChange={(event: BryEvent<{ value: string }>) => onChange({ ...value, sort: { ...value.sort, field: event.detail.value as IssueSort['field'] } })}
-              />
-              <bry-toggle label="Show empty groups" pressed={value.showEmptyGroups} onChange={(event: BryEvent<{ pressed: boolean }>) => onChange({ ...value, showEmptyGroups: event.detail.pressed })} />
-              <bry-toggle label="Show sub-issues" pressed={value.showSubIssues} onChange={(event: BryEvent<{ pressed: boolean }>) => onChange({ ...value, showSubIssues: event.detail.pressed })} />
-              <bry-toggle-group type="multiple" label="Visible properties" items={PROPERTIES} values={value.properties} onChange={(event: BryEvent<{ values: string[] }>) => onChange({ ...value, properties: event.detail.values as IssueProperty[] })} />
-            </bry-stack>
-          </bry-popover>
-          <bry-button label={selectedCount ? `${selectedCount} selected` : 'Select visible'} onPress={onSelectVisible} />
+              if (layout) onChange({ ...value, layout });
+            }}
+          />
+          {value.layout === 'calendar' && (
+            <bry-toggle-group
+              type="single"
+              label="Calendar range"
+              items={[option('month', 'Month'), option('week', 'Week')]}
+              values={[value.calendarMode]}
+              size="sm"
+              onChange={(event: BryEvent<{ values: string[] }>) => onChange({ ...value, calendarMode: (event.detail.values[0] as CalendarMode | undefined) ?? value.calendarMode })}
+            />
+          )}
+          <bry-select
+            label="Group by"
+            value={value.group}
+            options={['none', 'state', 'priority', 'assignee', 'sprint', 'module'].map(one => option(one, one[0]!.toUpperCase() + one.slice(1)))}
+            onChange={(event: BryEvent<{ value: string }>) => onChange({ ...value, group: event.detail.value as IssueGroup })}
+          />
+          <bry-select
+            label="Order by"
+            value={value.sort.field}
+            options={['rank', 'priority', 'title', 'createdAt', 'updatedAt', 'target'].map(one => option(one, one === 'rank' ? 'Manual order' : one))}
+            onChange={(event: BryEvent<{ value: string }>) => onChange({ ...value, sort: { ...value.sort, field: event.detail.value as IssueSort['field'] } })}
+          />
+          <bry-toggle label="Show empty groups" pressed={value.showEmptyGroups} onChange={(event: BryEvent<{ pressed: boolean }>) => onChange({ ...value, showEmptyGroups: event.detail.pressed })} />
+          <bry-toggle label="Show sub-issues" pressed={value.showSubIssues} onChange={(event: BryEvent<{ pressed: boolean }>) => onChange({ ...value, showSubIssues: event.detail.pressed })} />
+          <bry-toggle-group type="multiple" label="Visible properties" items={PROPERTIES} values={value.properties} onChange={(event: BryEvent<{ values: string[] }>) => onChange({ ...value, properties: event.detail.values as IssueProperty[] })} />
         </bry-stack>
-      </bry-stack>
+      </bry-popover>
 
-      {value.layout === 'calendar' && (
-        <bry-toggle-group
-          type="single"
-          label="Calendar range"
-          items={[option('month', 'Month'), option('week', 'Week')]}
-          values={[value.calendarMode]}
-          size="sm"
-          onChange={(event: BryEvent<{ values: string[] }>) => onChange({ ...value, calendarMode: (event.detail.values[0] as CalendarMode | undefined) ?? value.calendarMode })}
-        />
-      )}
+      <bry-popover title="Filter issues" align="end">
+        <bry-button label="Filters" icon="search" size="sm" />
+        <bry-stack gap="2">
+          <bry-input
+            label="Search"
+            value={value.filters.query ?? ''}
+            placeholder="Title or description"
+            onChange={(event: BryEvent<{ value: string }>) => changeFilters({ query: event.detail.value || undefined })}
+          />
+          <bry-grid columns="2" gap="2">
+            <bry-select label="Filter state" value={value.filters.stateIds?.[0] ?? 'all'} options={[option('all', 'All states'), ...states.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ stateIds: chosen(event.detail.value) ? [event.detail.value] : undefined })} />
+            <bry-select label="Filter priority" value={value.filters.priorities?.[0] ?? 'all'} options={['all', 'urgent', 'high', 'medium', 'low', 'none'].map(one => option(one, one[0]!.toUpperCase() + one.slice(1)))} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ priorities: chosen(event.detail.value) ? [event.detail.value as 'urgent' | 'high' | 'medium' | 'low' | 'none'] : undefined })} />
+            <bry-select label="Filter assignee" value={value.filters.assigneeId ?? 'all'} options={[option('all', 'All assignees'), ...members.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ assigneeId: chosen(event.detail.value) })} />
+            <bry-select label="Filter label" value={value.filters.labelId ?? 'all'} options={[option('all', 'All labels'), ...labels.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ labelId: chosen(event.detail.value) })} />
+            <bry-select label="Filter sprint" value={value.filters.sprintId ?? 'all'} options={[option('all', 'All sprints'), ...sprints.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ sprintId: chosen(event.detail.value) })} />
+            <bry-select label="Filter module" value={value.filters.moduleId ?? 'all'} options={[option('all', 'All modules'), ...modules.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ moduleId: chosen(event.detail.value) })} />
+            <bry-select label="Filter creator" value={value.filters.creatorId ?? 'all'} options={[option('all', 'All creators'), ...members.map(one => option(one.id, one.name))]} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ creatorId: chosen(event.detail.value) })} />
+          </bry-grid>
+          <bry-grid columns="2" gap="2">
+            <bry-date label="Start from" value={value.filters.startFrom} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ startFrom: event.detail.value || undefined })} />
+            <bry-date label="Start through" value={value.filters.startTo} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ startTo: event.detail.value || undefined })} />
+            <bry-date label="Target from" value={value.filters.targetFrom} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ targetFrom: event.detail.value || undefined })} />
+            <bry-date label="Target through" value={value.filters.targetTo} onChange={(event: BryEvent<{ value: string }>) => changeFilters({ targetTo: event.detail.value || undefined })} />
+          </bry-grid>
+          <bry-button label="Clear filters" onPress={() => onChange({ ...value, filters: {} })} />
+        </bry-stack>
+      </bry-popover>
+      <bry-button label={selectedCount ? `${selectedCount} selected` : 'Select visible'} size="sm" onPress={onSelectVisible} />
     </bry-stack>
   );
 }

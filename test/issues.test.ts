@@ -220,7 +220,7 @@ describe('the Plan issue collection', () => {
     await host!.waitFor(() => host!.byText('Child task') === undefined, { what: 'hidden sub-issues' });
     const empty = host!.findAll(node => node.type === 'bry-toggle' && node.props.label === 'Show empty groups')[0]!;
     host!.raise('bry-toggle', empty, 'change', { pressed: true });
-    expect(await host!.waitFor(() => host!.findAll(node => node.type === 'bry-heading' && node.props.text === 'Done')[0], { what: 'empty state group' })).toBeTruthy();
+    expect(await host!.waitFor(() => host!.findAll(node => node.type === 'bry-item' && node.props.title === 'Done')[0], { what: 'empty state group' })).toBeTruthy();
   });
 
   test('selects the visible set for bulk update, archive, and delete', async () => {

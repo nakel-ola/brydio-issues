@@ -44,7 +44,12 @@ async function open() {
     context: { placement: { id: 'place_list', kind: 'project-tab', projectId: PROJECT } },
   });
   await host.mounted();
-  await host.waitFor(() => host!.byText('Issues'), { what: 'Plan list', timeout: 5_000 });
+  await host.waitFor(
+    () => host!.findAll(node => node.type === 'bry-breadcrumb' && Boolean((
+      node.props.items as Array<{ label?: string }> | undefined
+    )?.some(item => item.label === 'Issues')))[0],
+    { what: 'Plan list', timeout: 5_000 },
+  );
   await host.waitFor(() => host!.findAll(node => node.type === 'bry-badge').reduce((sum, node) => sum + Number(node.props.text), 0) === 499, { what: 'all project issues', timeout: 5_000 });
 }
 

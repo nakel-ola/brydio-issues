@@ -52,7 +52,7 @@ describe('the clean Plan data layer', () => {
   test('declares the clean Plan identity and keyed placements', () => {
     const manifest = JSON.parse(readFileSync(join(import.meta.dir, '..', '.brydio', 'app.json'), 'utf8'));
 
-    expect(manifest).toMatchObject({ name: 'issues', displayName: 'Plan', version: '1.0.2' });
+    expect(manifest).toMatchObject({ name: 'issues', displayName: 'Plan', version: '1.0.3' });
     expect(manifest.placements.map((one: { key: string }) => one.key)).toEqual([
       'list', 'sprint', 'sprint-folder', 'plan-home',
     ]);

@@ -25,11 +25,13 @@ const VIEW_OPTIONS = [
   { value: 'spreadsheet', label: 'Spreadsheet' },
 ];
 
-export function ProjectSettings({ projectId, states, plan, onChanged }: {
+export function ProjectSettings({ projectId, projectName, states, plan, onChanged, onBack }: {
   projectId: string;
+  projectName: string;
   states: readonly State[];
   plan?: ProjectPlan;
   onChanged: () => Promise<void>;
+  onBack: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,10 +70,12 @@ export function ProjectSettings({ projectId, states, plan, onChanged }: {
 
   return (
     <bry-stack gap="4">
-      <bry-stack gap="1">
-        <bry-heading level={1} text="Project settings" />
-        <bry-text tone="muted" text="Plan fields live here. Project name and members stay in Brydio." />
+      <bry-stack direction="row" justify="between" align="center" wrap>
+        <bry-breadcrumb items={[{ id: 'project', label: projectName }, { id: 'settings', label: 'Plan settings' }]} onSelect={onBack} />
+        <bry-button label="Back to issues" icon="chevronRight" size="sm" onPress={onBack} />
       </bry-stack>
+      <bry-separator />
+      <bry-text tone="muted" text="Workflow and issue defaults for this List. Project name and members stay in Brydio." />
 
       {error && <bry-alert tone="danger" title="Couldn’t save settings" description={error} />}
 

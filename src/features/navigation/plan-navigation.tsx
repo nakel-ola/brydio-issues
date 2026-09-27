@@ -1,7 +1,7 @@
 import type { BryEvent } from '@brydio/ui';
 
 export type WorkspaceSection = 'home' | 'your-work' | 'analytics' | 'views';
-export type ProjectSection = 'issues' | 'overview' | 'sprints' | 'modules' | 'views' | 'inbox' | 'drafts' | 'archive' | 'settings';
+export type ProjectSection = 'issues' | 'modules' | 'views' | 'inbox' | 'drafts' | 'archive' | 'settings';
 export type PlanSection = WorkspaceSection | ProjectSection;
 
 interface SectionItem {
@@ -17,41 +17,44 @@ const WORKSPACE_SECTIONS: SectionItem[] = [
   { id: 'views', label: 'Views' },
 ];
 
-const PROJECT_SECTIONS: SectionItem[] = [
-  { id: 'issues', label: 'Issues' },
-  { id: 'overview', label: 'Overview' },
-  { id: 'sprints', label: 'Sprints' },
-  { id: 'modules', label: 'Modules' },
-  { id: 'views', label: 'Views' },
-  { id: 'inbox', label: 'Inbox' },
-  { id: 'drafts', label: 'Drafts' },
-  {
-    id: 'manage',
-    label: 'Manage',
-    entries: [
-      { id: 'archive', label: 'Archive' },
-      { id: 'settings', label: 'Settings' },
-    ],
-  },
-];
+const PROJECT_SECTIONS = [
+  { id: 'issues', label: 'Issues', icon: 'tasks' },
+  { id: 'modules', label: 'Modules', icon: 'docs' },
+  { id: 'views', label: 'Views', icon: 'search' },
+  { id: 'inbox', label: 'Inbox', icon: 'mail' },
+  { id: 'drafts', label: 'Drafts', icon: 'notes' },
+  { id: 'archive', label: 'Archive', icon: 'archive', separator: true },
+  { id: 'settings', label: 'Plan settings', icon: 'settings' },
+] as const;
 
 export function defaultPlanSection(projectId?: string): PlanSection {
   return projectId ? 'issues' : 'home';
 }
 
-export function PlanNavigation({ projectId, section, onSelect }: {
-  projectId?: string;
-  section: PlanSection;
-  onSelect: (section: PlanSection) => void;
+export function PlanNavigation({ section, onSelect }: {
+  section: WorkspaceSection;
+  onSelect: (section: WorkspaceSection) => void;
 }) {
-  const sections = projectId ? PROJECT_SECTIONS : WORKSPACE_SECTIONS;
-
   return (
     <bry-section-menu
-      label={projectId ? 'Project planning' : 'Plan'}
-      sections={[...sections]}
+      label="Plan"
+      sections={[...WORKSPACE_SECTIONS]}
       current={section}
-      onSelect={(event: BryEvent<{ id: string }>) => onSelect(event.detail.id as PlanSection)}
+      onSelect={(event: BryEvent<{ id: string }>) => onSelect(event.detail.id as WorkspaceSection)}
     />
+  );
+}
+
+export function ProjectNavigation({ onSelect }: {
+  section: ProjectSection;
+  onSelect: (section: ProjectSection) => void;
+}) {
+  return (
+    <bry-menu
+      items={[...PROJECT_SECTIONS]}
+      onSelect={(event: BryEvent<{ id: string }>) => onSelect(event.detail.id as ProjectSection)}
+    >
+      <bry-button label="More" icon="more" variant="ghost" size="sm" />
+    </bry-menu>
   );
 }

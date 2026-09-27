@@ -48,14 +48,19 @@ export function IssueList({ issues, states, sprints, modules, projectName, group
   });
 
   return (
-    <bry-stack gap="3">
+    <bry-stack gap="4" align="stretch">
       {windows.map(group => (
-        <bry-card key={group.id} padding="2">
-          <bry-stack gap="1">
-            <bry-stack direction="row" justify="between" align="center">
-              <bry-heading level={3} text={group.name} />
+        <bry-stack key={group.id} align="stretch">
+            <bry-item
+              title={group.name}
+              description={`${group.issues.length} ${group.issues.length === 1 ? 'issue' : 'issues'}`}
+              icon="tasks"
+              variant="muted"
+              size="sm"
+            >
               <bry-badge text={String(group.issues.length)} tone="neutral" />
-            </bry-stack>
+            </bry-item>
+            <bry-separator />
             {group.visible.map(issue => (
                 <bry-list-row
                   key={issue.id}
@@ -71,8 +76,7 @@ export function IssueList({ issues, states, sprints, modules, projectName, group
             {group.visible.length < group.issues.length && (
               <bry-text tone="muted" text={`Showing ${group.visible.length} of ${group.issues.length} issues in this group.`} />
             )}
-          </bry-stack>
-        </bry-card>
+        </bry-stack>
       ))}
     </bry-stack>
   );

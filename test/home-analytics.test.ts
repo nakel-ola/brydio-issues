@@ -64,7 +64,7 @@ function selectSection(id: string) {
 }
 
 describe('Plan workspace', () => {
-  test('summarizes project work and project overview reports literal progress', async () => {
+  test('summarizes project work without inventing a project overview surface', async () => {
     await openWorkspace();
 
     expect(host!.byText('2')).toBeTruthy();
@@ -73,20 +73,7 @@ describe('Plan workspace', () => {
     expect(host!.byText('Finished')).toBeTruthy();
     expect(host!.byText('Assigned issues')).toBeTruthy();
 
-    host!.stop();
-    host = FakeHost.start({
-      entry,
-      manifest,
-      fixtures: HOST_FIXTURES,
-      directory: { projects: PROJECTS, members: MEMBERS },
-      context: { placement: { id: 'place_list', kind: 'project-tab', projectId: 'project_alpha' } },
-    });
-    await host.mounted();
-    const menu = await host.waitFor(() => host!.findAll(node => node.type === 'bry-section-menu')[0], { what: 'the project menu' });
-
-    host!.raise('bry-section-menu', menu, 'select', { id: 'overview' });
-    expect(await host!.waitFor(() => host!.byText('50% complete'), { what: 'project progress' })).toBeTruthy();
-    expect(host!.byText('1 of 2 issues completed')).toBeTruthy();
+    expect(host!.byText('Project overview')).toBeUndefined();
   });
 
   test('computes fixed analytics and filters every chart and table by project', async () => {

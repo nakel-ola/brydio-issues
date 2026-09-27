@@ -197,14 +197,29 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
   );
 
   return (
-    <bry-stack gap="4">
-      <bry-stack direction="row" justify="between" align="center">
-        <bry-heading level={1} text={heading} />
-        <bry-stack direction="row" gap="2">
-          <bry-button label="Quick add" disabled={busy || Boolean(creating) || !defaultState} onPress={() => setCreating('quick')} />
-          <bry-button label="New issue" variant="primary" disabled={busy || Boolean(creating) || !defaultState} onPress={() => setCreating('full')} />
+    <bry-stack gap="3" align="stretch">
+      <bry-stack direction="row" justify="between" align="center" wrap>
+        <bry-breadcrumb
+          items={[{ id: 'project', label: projectName }, { id: 'issues', label: heading }]}
+          onSelect={() => void navigate({ kind: 'project', id: projectId }).catch(() => undefined)}
+        />
+        <bry-stack direction="row" gap="2" align="center" wrap>
+          <IssueControls
+            value={view}
+            states={states}
+            labels={labels}
+            sprints={sprints}
+            modules={modules}
+            members={members.members}
+            onChange={setView}
+            selectedCount={selectedIds.length}
+            onSelectVisible={() => setSelectedIds(selectedIds.length === visible.length ? [] : visible.slice(0, 100).map(one => one.id))}
+          />
+          <bry-button label="Quick add" icon="add" size="sm" disabled={busy || Boolean(creating) || !defaultState} onPress={() => setCreating('quick')} />
+          <bry-button label="New issue" icon="add" size="sm" variant="primary" disabled={busy || Boolean(creating) || !defaultState} onPress={() => setCreating('full')} />
         </bry-stack>
       </bry-stack>
+      <bry-separator />
 
       {states.length === 0 && (
         <bry-alert title="Set up the workflow" description="Create states before work starts moving.">
@@ -212,17 +227,6 @@ export function IssueCollection({ projectId, projectName, title: heading = 'Issu
         </bry-alert>
       )}
       {failed && <bry-alert tone="danger" title="Couldn’t update issues" description={failed} />}
-      <IssueControls
-        value={view}
-        states={states}
-        labels={labels}
-        sprints={sprints}
-        modules={modules}
-        members={members.members}
-        onChange={setView}
-        selectedCount={selectedIds.length}
-        onSelectVisible={() => setSelectedIds(selectedIds.length === visible.length ? [] : visible.slice(0, 100).map(one => one.id))}
-      />
       {selectedIds.length > 0 && (
         <bry-card padding="2">
           <bry-stack direction="row" gap="2" align="center" wrap>

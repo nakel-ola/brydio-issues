@@ -67,12 +67,12 @@ async function open(options: Partial<Parameters<typeof FakeHost.start>[0]> = {})
     ...options,
   });
   await host.mounted();
-  await host.waitFor(() => of('bry-section-menu'), { what: 'Plan navigation' });
+  await host.waitFor(() => of('bry-menu'), { what: 'Plan navigation' });
 }
 
 async function section(id: string, heading: string) {
-  const menu = of('bry-section-menu')!;
-  host!.raise('bry-section-menu', menu, 'select', { id });
+  const menu = of('bry-menu')!;
+  host!.raise('bry-menu', menu, 'select', { id });
   return host!.waitFor(() => of('bry-heading', heading), { what: heading });
 }
 

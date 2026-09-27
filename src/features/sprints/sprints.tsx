@@ -1,4 +1,4 @@
-import { tools } from '@brydio/app';
+import { navigate, tools } from '@brydio/app';
 import type { BryEvent } from '@brydio/ui';
 import { useState } from '@brydio/app/preact';
 
@@ -58,6 +58,7 @@ export function Sprints({ projectId, projectName, issues, labels, states, sprint
   return (
     <SprintList
       projectId={projectId}
+      projectName={projectName}
       issues={issues}
       states={states}
       sprints={ordered}
@@ -69,8 +70,9 @@ export function Sprints({ projectId, projectName, issues, labels, states, sprint
   );
 }
 
-function SprintList({ projectId, issues, states, sprints, today, selectedMissing, refresh, onOpen }: {
+function SprintList({ projectId, projectName, issues, states, sprints, today, selectedMissing, refresh, onOpen }: {
   projectId: string;
+  projectName: string;
   issues: readonly Issue[];
   states: readonly State[];
   sprints: readonly Sprint[];
@@ -103,11 +105,15 @@ function SprintList({ projectId, issues, states, sprints, today, selectedMissing
   };
 
   return (
-    <bry-stack gap="4">
-      <bry-stack direction="row" justify="between" align="center">
-        <bry-heading level={1} text="Sprints" />
-        <bry-button label="New sprint" variant="primary" onPress={() => setCreating(true)} />
+    <bry-stack gap="3" align="stretch">
+      <bry-stack direction="row" justify="between" align="center" wrap>
+        <bry-breadcrumb
+          items={[{ id: 'project', label: projectName }, { id: 'sprints', label: 'Sprints' }]}
+          onSelect={() => void navigate({ kind: 'project', id: projectId }).catch(() => undefined)}
+        />
+        <bry-button label="New sprint" icon="add" size="sm" variant="primary" onPress={() => setCreating(true)} />
       </bry-stack>
+      <bry-separator />
       {selectedMissing && <bry-alert tone="warn" title="That sprint is unavailable" description="It may have been deleted or belongs to another project." />}
       {error && <bry-alert tone="danger" title="Couldn’t update sprints" description={error} />}
       {creating && (
@@ -128,26 +134,29 @@ function SprintList({ projectId, issues, states, sprints, today, selectedMissing
       )}
       {sprints.length === 0 ? (
         <bry-empty-state title="No sprints yet" text="Create a sprint here or from the Sprint folder in the project sidebar." action="New sprint" onAction={() => setCreating(true)} />
-      ) : sprints.map(sprint => {
+      ) : <bry-stack align="stretch">
+        {sprints.map(sprint => {
         const phase = sprintPhase(sprint, today);
         const work = issues.filter(one => one.sprint === sprint.id && !one.archived);
         const progress = completionOf(work, completed);
 
         return (
-          <bry-card key={sprint.id} padding="3" pressable onPress={() => onOpen(sprint.id)}>
-            <bry-stack gap="2">
-              <bry-stack direction="row" justify="between" align="center">
-                <bry-heading level={3} text={sprint.name} />
+          <bry-stack key={sprint.id} gap="1" align="stretch">
+              <bry-list-row
+                title={sprint.name}
+                description={[sprint.start, sprint.end].filter(Boolean).join(' – ') || sprint.goal || 'Dates not set'}
+                meta={`${phase} · ${progress.completed}/${progress.total}`}
+                pressable
+                onPress={() => onOpen(sprint.id)}
+              >
                 <bry-badge text={phase} tone={phase === 'active' ? 'success' : 'neutral'} />
-              </bry-stack>
-              <bry-text tone="muted" text={[sprint.start, sprint.end].filter(Boolean).join(' – ') || 'Dates not set'} />
-              {sprint.goal && <bry-text text={sprint.goal} />}
+              </bry-list-row>
               <bry-progress label={`${sprint.name} progress`} value={progress.percent} />
-              <bry-text tone="muted" text={`${progress.completed} of ${progress.total} issues completed`} />
-            </bry-stack>
-          </bry-card>
+              <bry-separator />
+          </bry-stack>
         );
       })}
+      </bry-stack>}
     </bry-stack>
   );
 }
@@ -183,11 +192,22 @@ function SprintDetail({ sprint, projectId, projectName, issues, labels, states, 
   };
 
   return (
-    <bry-stack gap="4">
+    <bry-stack gap="3" align="stretch">
       <bry-stack direction="row" justify="between" align="center">
-        <bry-button label="Back to sprints" onPress={onBack} />
-        <bry-badge text={sprintPhase(sprint, today)} tone={sprintPhase(sprint, today) === 'active' ? 'success' : 'neutral'} />
+        <bry-breadcrumb
+          items={[
+            { id: 'project', label: projectName },
+            { id: 'sprints', label: 'Sprints' },
+            { id: 'sprint', label: sprint.name },
+          ]}
+          onSelect={onBack}
+        />
+        <bry-stack direction="row" gap="2" align="center">
+          <bry-badge text={sprintPhase(sprint, today)} tone={sprintPhase(sprint, today) === 'active' ? 'success' : 'neutral'} />
+          <bry-button label="Back to sprints" size="sm" onPress={onBack} />
+        </bry-stack>
       </bry-stack>
+      <bry-separator />
       <bry-stack gap="1">
         <bry-heading level={1} text={sprint.name} />
         {sprint.goal && <bry-text text={sprint.goal} />}

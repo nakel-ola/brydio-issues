@@ -84,9 +84,18 @@ describe('Plan sprints', () => {
   test('shows the list when there is no active sprint and creates a draft sprint', async () => {
     const inactive = SPRINTS.filter(one => one.id !== 'active');
     await open({ fixtures: { issues: ISSUES, labels: [], states: STATES, sprints: inactive, modules: [] } });
-    expect(await host!.waitFor(() => of('bry-heading', 'Sprints'), { what: 'the sprint list' })).toBeTruthy();
-    const headings = host!.findAll(node => node.type === 'bry-heading' && node.props.level === 3).map(node => node.props.text);
-    expect(headings).toEqual(['Upcoming sprint', 'Draft sprint', 'Completed sprint']);
+    const breadcrumb = await host!.waitFor(() => {
+      const current = of('bry-breadcrumb');
+
+      return (current?.props.items as Array<{ label: string }> | undefined)?.[0]?.label === 'Alpha project' ? current : undefined;
+    }, { what: 'the sprint list' });
+    expect(breadcrumb.props.items).toEqual([
+      { id: 'project', label: 'Alpha project' },
+      { id: 'sprints', label: 'Sprints' },
+    ]);
+    expect(host!.findAll(node => node.type === 'bry-list-row').map(node => node.props.title)).toEqual([
+      'Upcoming sprint', 'Draft sprint', 'Completed sprint',
+    ]);
 
     host!.press(host!.byText('New sprint')!);
     const name = await host!.waitFor(() => of('bry-input', 'Sprint name'), { what: 'the sprint form' });
@@ -107,7 +116,7 @@ describe('Plan sprints', () => {
 
     host!.press(host!.byText('Remove from sprint')!);
     await host!.waitFor(() => host!.calls.some(call => call.tool === 'update_issue' && call.input.sprint === null), { what: 'the removed issue' });
-    expect(host!.byText('Sprint issues')).toBeTruthy();
+    expect(host!.findAll(node => node.type === 'bry-breadcrumb' && (node.props.items as Array<{ label: string }>).some(item => item.label === 'Sprint issues'))).toHaveLength(1);
     expect(await host!.waitFor(() => host!.byText('Unplanned task'), { what: 'the shared sprint issue renderer' })).toBeTruthy();
   });
 

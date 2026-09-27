@@ -39,7 +39,7 @@ describe('Plan navigation', () => {
     expect(await host.waitFor(() => by('bry-heading', 'Analytics'), { what: 'Analytics' })).toBeTruthy();
   });
 
-  test('opens Issues on a project and exposes useful first actions when it is empty', async () => {
+  test('opens a project List directly without a second project navigation shell', async () => {
     host = FakeHost.start({
       entry,
       manifest,
@@ -49,13 +49,23 @@ describe('Plan navigation', () => {
     });
     await host.mounted();
 
-    expect(await host.waitFor(() => by('bry-heading', 'Issues'), { what: 'Issues' })).toBeTruthy();
-    expect(by('bry-section-menu')!.props.current).toBe('issues');
+    const breadcrumb = await host.waitFor(() => {
+      const current = by('bry-breadcrumb');
+
+      return (current?.props.items as Array<{ label: string }> | undefined)?.[0]?.label === 'Alpha' ? current : undefined;
+    }, { what: 'the project List header' });
+
+    expect(breadcrumb.props.items).toEqual([
+      { id: 'project', label: 'Alpha' },
+      { id: 'issues', label: 'Issues' },
+    ]);
+    expect(by('bry-section-menu')).toBeUndefined();
+    expect(host.byText('Overview')).toBeUndefined();
     expect(host.byText('New issue')).toBeTruthy();
     expect(host.byText('Configure states')).toBeTruthy();
 
     host.press(host.byText('Configure states')!);
-    expect(await host.waitFor(() => by('bry-heading', 'Project settings'), { what: 'project settings' })).toBeTruthy();
+    expect(await host.waitFor(() => host!.byText('Back to issues'), { what: 'project settings' })).toBeTruthy();
     expect(host.byText('Create default states')).toBeTruthy();
 
     host.press(host.byText('Create default states')!);
