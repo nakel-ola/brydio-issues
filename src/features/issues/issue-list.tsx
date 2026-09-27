@@ -3,7 +3,7 @@ import { groupIssues, issueIdentifier, type IssueGroup } from '../../model/issue
 import type { Module, Sprint } from '../../model/schemas.ts';
 import type { IssueProperty } from './issue-controls.tsx';
 
-const ROW_WINDOW = 200;
+const ROW_WINDOW = 300;
 
 export function IssueList({ issues, states, sprints, modules, projectName, group = 'state', showEmpty = false, properties, onOpen }: {
   issues: readonly Issue[];
@@ -35,21 +35,28 @@ export function IssueList({ issues, states, sprints, modules, projectName, group
       : []),
   ].filter(one => showEmpty || one.issues.length > 0);
   const shown = new Set(properties ?? ['identifier', 'priority']);
+  let remaining = ROW_WINDOW;
+  const windows = groups.map(group => {
+    const sorted = group.issues
+      .slice()
+      .sort((left, right) => (left.rank ?? Number.MAX_SAFE_INTEGER) - (right.rank ?? Number.MAX_SAFE_INTEGER));
+    const visible = sorted.slice(0, remaining);
+
+    remaining -= visible.length;
+
+    return { ...group, visible };
+  });
 
   return (
     <bry-stack gap="3">
-      {groups.map(group => (
+      {windows.map(group => (
         <bry-card key={group.id} padding="2">
           <bry-stack gap="1">
             <bry-stack direction="row" justify="between" align="center">
               <bry-heading level={3} text={group.name} />
               <bry-badge text={String(group.issues.length)} tone="neutral" />
             </bry-stack>
-            {group.issues
-              .slice()
-              .sort((left, right) => (left.rank ?? Number.MAX_SAFE_INTEGER) - (right.rank ?? Number.MAX_SAFE_INTEGER))
-              .slice(0, ROW_WINDOW)
-              .map(issue => (
+            {group.visible.map(issue => (
                 <bry-list-row
                   key={issue.id}
                   title={issue.title}
@@ -61,8 +68,8 @@ export function IssueList({ issues, states, sprints, modules, projectName, group
                   {shown.has('identifier') && <bry-text tone="muted" text={issueIdentifier(issue, projectName)} />}
                 </bry-list-row>
               ))}
-            {group.issues.length > ROW_WINDOW && (
-              <bry-text tone="muted" text={`Showing the first ${ROW_WINDOW} of ${group.issues.length} issues in this state.`} />
+            {group.visible.length < group.issues.length && (
+              <bry-text tone="muted" text={`Showing ${group.visible.length} of ${group.issues.length} issues in this group.`} />
             )}
           </bry-stack>
         </bry-card>

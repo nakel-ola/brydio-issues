@@ -35,7 +35,7 @@ export function IssueSpreadsheet({ issues, states, sprints, modules, projectName
     <bry-data-table
       label="Issue spreadsheet"
       columns={columns}
-      rows={issues.slice(0, 500).map(issue => ({
+      rows={issues.slice(0, 200).map(issue => ({
         id: issue.id,
         cells: [`${issueIdentifier(issue, projectName)} ${issue.title}`, ...optional.map(column => column.value(issue))],
       }))}

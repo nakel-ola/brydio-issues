@@ -29,8 +29,9 @@ export function Home({ data, projects }: { data: ProjectData; projects: ProjectN
         <bry-text tone="muted" text="A clear view of what is moving across your projects." />
       </bry-stack>
 
-      <bry-grid columns="3" gap="3">
+      <bry-grid columns="4" gap="3">
         <Snapshot label="Open issues" value={open.length} />
+        <Snapshot label="Assigned issues" value={open.filter(one => one.assignees.length > 0).length} />
         <Snapshot label="Active sprints" value={data.sprints.filter(one => one.status === 'active').length} />
         <Snapshot label="Projects" value={projectIds.length} />
       </bry-grid>

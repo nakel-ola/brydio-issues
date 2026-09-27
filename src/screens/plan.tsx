@@ -7,11 +7,11 @@ import {
   useProjects,
   useRef,
   useState,
-  useWatch,
 } from '@brydio/app/preact';
 
-import { EMPTY_PROJECT_DATA, scopeProjectData, type ProjectData } from '../data/project-data.ts';
+import { EMPTY_PROJECT_DATA, RefreshQueue, scopeProjectData, type ProjectData } from '../data/project-data.ts';
 import { readAll } from '../data/pages.ts';
+import { Analytics } from '../features/analytics/analytics.tsx';
 import { Home, ProjectOverview } from '../features/home/home.tsx';
 import { Archive } from '../features/archive/archive.tsx';
 import { Drafts, Inbox } from '../features/inbox/inbox.tsx';
@@ -21,6 +21,7 @@ import { defaultPlanSection, PlanNavigation, type PlanSection } from '../feature
 import { ProjectSettings } from '../features/settings/project-settings.tsx';
 import { Sprints } from '../features/sprints/sprints.tsx';
 import { Views } from '../features/views/views.tsx';
+import { YourWork } from '../features/work/your-work.tsx';
 import type { Issue, Label, Link, Module, ProjectPlan, Sprint, State, View } from '../model/schemas.ts';
 
 interface PlanDataState {
@@ -29,7 +30,20 @@ interface PlanDataState {
   error: string | null;
 }
 
-function usePlanData(projectId?: string): PlanDataState & { refresh: () => Promise<void> } {
+function watchedCollections(section: PlanSection): string[] {
+  if (section === 'home' || section === 'overview') return ['issues', 'states', 'sprints', 'modules', 'project_plan'];
+  if (section === 'analytics') return ['issues', 'states'];
+  if (section === 'your-work') return ['issues', 'states'];
+  if (section === 'issues') return ['issues', 'states', 'sprints', 'modules', 'labels'];
+  if (section === 'sprints') return ['issues', 'states', 'sprints', 'labels', 'modules'];
+  if (section === 'modules') return ['issues', 'states', 'modules', 'links', 'labels'];
+  if (section === 'views') return ['issues', 'states', 'views', 'labels', 'modules'];
+  if (section === 'settings') return ['states', 'project_plan'];
+
+  return ['issues', 'states'];
+}
+
+function usePlanData(projectId: string | undefined, section: PlanSection): PlanDataState & { refresh: () => Promise<void> } {
   const [state, setState] = useState<PlanDataState>({ data: EMPTY_PROJECT_DATA, loading: true, error: null });
   const ticket = useRef(0);
   const refresh = useCallback(async () => {
@@ -74,11 +88,16 @@ function usePlanData(projectId?: string): PlanDataState & { refresh: () => Promi
     setState(previous => ({ ...previous, loading: true }));
     void refresh();
   }, [refresh]);
-  useWatch('issues', () => void refresh());
-  useWatch('states', () => void refresh());
-  useWatch('sprints', () => void refresh());
-  useWatch('modules', () => void refresh());
-  useWatch('project_plan', () => void refresh());
+  useLayoutEffect(() => {
+    const queue = new RefreshQueue(refresh);
+    const stop = watchedCollections(section).map(collection => data.watch(
+      collection,
+      () => void queue.request(),
+      failure => setState(previous => ({ ...previous, error: failure.message })),
+    ));
+
+    return () => stop.forEach(one => one());
+  }, [refresh, section]);
 
   return { ...state, refresh };
 }
@@ -87,7 +106,7 @@ function PlanScreen() {
   const projectId = useHost().placement.projectId;
   const [section, setSection] = useState<PlanSection>(() => defaultPlanSection(projectId));
   const seenProject = useRef(projectId);
-  const loaded = usePlanData(projectId);
+  const loaded = usePlanData(projectId, section);
   const projectIds = [
     ...new Set([
       ...(projectId ? [projectId] : []),
@@ -140,6 +159,8 @@ function Section({ section, projectId, projectName, projects, data: projectData,
 }) {
   if (!projectId) {
     if (section === 'home') return <Home data={projectData} projects={projects} />;
+    if (section === 'your-work') return <YourWork issues={projectData.issues} states={projectData.states} projects={projects} />;
+    if (section === 'analytics') return <Analytics issues={projectData.issues} states={projectData.states} projects={projects} />;
 
     return <FutureSection section={section} />;
   }
@@ -222,8 +243,7 @@ function Section({ section, projectId, projectName, projects, data: projectData,
 }
 
 const LABELS: Partial<Record<PlanSection, string>> = {
-  'your-work': 'Your work', analytics: 'Analytics', views: 'Views', sprints: 'Sprints', modules: 'Modules',
-  inbox: 'Inbox', drafts: 'Drafts', archive: 'Archive',
+  views: 'Views', sprints: 'Sprints', modules: 'Modules', inbox: 'Inbox', drafts: 'Drafts', archive: 'Archive',
 };
 
 function FutureSection({ section }: { section: PlanSection }) {

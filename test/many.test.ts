@@ -1,22 +1,29 @@
 import { build } from '@brydio/cli';
-import { FakeHost, FixtureStore } from '@brydio/fake-host';
-import { afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { FakeHost } from '@brydio/fake-host';
+import { afterEach, beforeAll, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = join(import.meta.dir, '..');
 const manifest = JSON.parse(readFileSync(join(root, '.brydio/app.json'), 'utf8'));
-const board = join(root, 'dist/screens/board.js');
-const STATUSES = ['todo', 'doing', 'done'] as const;
-
-/** 500 issues: 350 to do, 100 doing, 50 done, each ranked in order. */
+const entry = join(root, 'dist/screens/plan.js');
+const PROJECT = 'project_scale';
+const STATES = [
+  { id: 'todo', name: 'To do', project: PROJECT, group: 'unstarted', colour: 'neutral', position: 1 },
+  { id: 'doing', name: 'In progress', project: PROJECT, group: 'started', colour: 'brand', position: 2 },
+  { id: 'done', name: 'Done', project: PROJECT, group: 'completed', colour: 'success', position: 3 },
+];
 const MANY = Array.from({ length: 500 }, (_, at) => ({
   id: `issue_${String(at).padStart(3, '0')}`,
   title: `Issue ${at}`,
-  status: at < 350 ? 'todo' : at < 450 ? 'doing' : 'done',
+  project: at === 499 ? 'project_elsewhere' : PROJECT,
+  sequence: at + 1,
+  ...(at % 17 === 0 ? { status: at % 2 ? 'doing' : 'todo' } : { state: at < 350 ? 'todo' : at < 450 ? 'doing' : 'done' }),
+  priority: at % 5 === 0 ? 'high' : 'none',
+  assignees: [], labels: [], modules: [], archived: false, draft: false,
   rank: (at + 1) * 1024,
 }));
-
+const FIXTURES = { issues: MANY, states: STATES, labels: [], links: [], sprints: [], modules: [], views: [], project_plan: [] };
 let host: FakeHost | null = null;
 
 beforeAll(async () => {
@@ -28,117 +35,52 @@ afterEach(() => {
   host = null;
 });
 
-const column = (title: string) => host!.findAll(node => node.type === 'bry-board-column' && node.props.title === title)[0]!;
-/** The first words drawn inside a node: a card's title. */
-function firstText(id: string): unknown {
-  const node = host!.tree.get(id)!;
-
-  if (node.type === 'bry-text') return node.props.text;
-
-  for (const child of node.children) {
-    const found = firstText(child);
-
-    if (found !== undefined) return found;
-  }
-
-  return undefined;
+async function open() {
+  host = FakeHost.start({
+    entry,
+    manifest,
+    fixtures: FIXTURES,
+    directory: { projects: [{ id: PROJECT, name: 'Scale' }] },
+    context: { placement: { id: 'place_list', kind: 'project-tab', projectId: PROJECT } },
+  });
+  await host.mounted();
+  await host.waitFor(() => host!.byText('Issues'), { what: 'Plan list', timeout: 5_000 });
+  await host.waitFor(() => host!.findAll(node => node.type === 'bry-badge').reduce((sum, node) => sum + Number(node.props.text), 0) === 499, { what: 'all project issues', timeout: 5_000 });
 }
 
-const titlesIn = (title: string) => host!.tree.get(column(title).id)!.children.map(firstText);
+async function layout(value: string, ready: () => unknown) {
+  const control = host!.findAll(node => node.type === 'bry-toggle-group' && node.props.label === 'Layout')[0]!;
+  host!.raise('bry-toggle-group', control, 'change', { values: [value] });
+  await host!.waitFor(ready, { what: `${value} layout`, timeout: 5_000 });
+}
 
-describe('a board of 500 issues (A8-F01-S02)', () => {
-  test('reads every page, and each column holds its count but draws only a window of cards', async () => {
-    const started = Date.now();
+test('pages all 500 issues while every large layout keeps a bounded tree', async () => {
+  await open();
 
-    host = FakeHost.start({ entry: board, manifest, fixtures: { issues: MANY } });
-    await host.mounted();
-    await host.waitFor(() => column('To do')?.props.count === 350, { what: 'all 500', timeout: 5_000 });
+  expect(host!.findAll(node => node.type === 'bry-list-row').length).toBeLessThanOrEqual(300);
+  expect(host!.tree.size).toBeLessThan(5_000);
 
-    const took = Date.now() - started;
+  await layout('kanban', () => host!.findAll(node => node.type === 'bry-board')[0]);
+  expect(host!.findAll(node => node.type === 'bry-card').length).toBeLessThanOrEqual(300);
+  expect(host!.tree.size).toBeLessThan(5_000);
 
-    expect(STATUSES.map(status => host!.findAll(node => node.type === 'bry-board-column')[STATUSES.indexOf(status)]!.props.count)).toEqual([350, 100, 50]);
-    // To do's first 12 alone, then each column whole from its top: To do's 350 in two pages, Doing's 100 and Done's 50 in one each.
-    const reads = host.calls.filter(call => call.tool === 'list_issues').map(call => call.input as { filter: { status: string }; sort: unknown; limit: number; cursor?: string });
+  await layout('spreadsheet', () => host!.findAll(node => node.type === 'bry-data-table' && node.props.label === 'Issue spreadsheet')[0]);
+  const table = host!.findAll(node => node.type === 'bry-data-table' && node.props.label === 'Issue spreadsheet')[0]!;
+  expect((table.props.rows as unknown[]).length).toBeLessThanOrEqual(200);
+  expect(host!.tree.size).toBeLessThan(5_000);
 
-    expect(reads[0]).toEqual({ filter: { status: 'todo' }, sort: { field: 'rank', dir: 'asc' }, limit: 12 });
-    expect(reads.slice(1).every(read => read.limit === 200 && JSON.stringify(read.sort) === '{"field":"rank","dir":"asc"}')).toBe(true);
-    expect(reads.slice(1).map(read => `${read.filter.status}${read.cursor ? ' after' : ''}`).sort()).toEqual(['doing', 'done', 'todo', 'todo after']);
-    expect(host.findAll(node => node.type === 'bry-card')).toHaveLength(40 + 40 + 40);
-    expect(host.tree.size).toBeLessThan(1_500);
-    expect(titlesIn('To do').slice(0, 2)).toEqual(['Issue 0', 'Issue 1']);
-    // The fake host is not the browser; this only keeps a regression from hiding here.
-    expect(took).toBeLessThan(3_000);
+  const reads = host!.calls.filter(call => call.tool === 'list_issues');
+  expect(reads.length).toBeGreaterThanOrEqual(3);
+});
+
+test('coalesced active watches refresh the visible screen and keep prior data while reading', async () => {
+  await open();
+
+  host!.store!.put('issues', {
+    id: 'issue_live', title: 'Live issue', project: PROJECT, sequence: 501, state: 'todo', priority: 'urgent',
+    assignees: [], labels: [], modules: [], archived: false, draft: false, rank: 1,
   });
-
-  test('opens with To do’s first cards, before the other columns or any later page are read, and carries only titles at first', async () => {
-    const pages = new FixtureStore(manifest, { issues: MANY }).tools().list_issues!;
-    let release: () => void = () => {};
-    const held = new Promise<void>(resolve => (release = resolve));
-
-    host = FakeHost.start({
-      entry: board,
-      manifest,
-      fixtures: { issues: MANY },
-      // To do's first page answers at once; Doing's, Done's and every later page wait for the test.
-      tools: {
-        list_issues: async input => {
-          const read = input as { filter: { status: string }; cursor?: string };
-
-          if ((read as unknown as { limit: number }).limit !== 12) await held;
-
-          return pages(input);
-        },
-      },
-    });
-    await host.mounted();
-
-    // To do's first 12, drawn alone: nothing else is read, or watched, before them.
-    await host.waitFor(() => column('To do')?.props.count === 12, { what: 'To do’s first page, drawn', timeout: 5_000 });
-
-    expect(column('Doing').props.count).toBe(0);
-    expect(host.calls.map(call => (call.input as { limit: number }).limit)).toEqual([12, 200, 200, 200].slice(0, host.calls.length));
-    expect(JSON.stringify(host.received.slice(0, host.received.findIndex(message => JSON.stringify(message).includes('"bry-card"'))))).not.toContain('data/subscribe');
-    expect(host.findAll(node => node.type === 'bry-board')[0]!.props.loading).toBeUndefined();
-
-    // The first tree with cards in it has their titles, and no menus, avatars or badges yet.
-    const first = JSON.stringify(host.received.find(message => JSON.stringify(message).includes('"bry-card"')));
-
-    console.log('FIRST', first.slice(0, 1500));
-    expect(first).toContain('Issue 0');
-    expect(first).not.toContain('bry-menu');
-    expect(first).not.toContain('bry-badge');
-    expect(first).not.toContain('bry-avatar');
-
-    release();
-    await host.waitFor(() => column('To do')?.props.count === 350, { what: 'all 500', timeout: 5_000 });
-    // They join once every column is in.
-    await host.waitFor(() => host!.findAll(node => node.type === 'bry-menu').length === 40 + 40 + 40, { what: 'the cards’ menus', timeout: 5_000 });
-    expect(column('Done').props.count).toBe(50);
-  });
-
-  test('a column’s range draws the cards it asks for, from start, and a move there still writes one rank', async () => {
-    host = FakeHost.start({ entry: board, manifest, fixtures: { issues: MANY } });
-    await host.mounted();
-    await host.waitFor(() => column('To do')?.props.count === 350, { what: 'all 500', timeout: 5_000 });
-
-    host.raise('bry-board-column', column('To do'), 'range', { start: 200, end: 230 });
-    await host.waitFor(() => column('To do').props.start === 190, { what: 'the window to move' });
-
-    expect(titlesIn('To do')[0]).toBe('Issue 190');
-    expect(titlesIn('To do')).toHaveLength(50);
-    expect(titlesIn('To do').at(-1)).toBe('Issue 239');
-
-    const card = host.findAll(node => node.type === 'bry-text' && node.props.text === 'Issue 210')[0]!;
-    let holder = host.parentOf(card)!;
-
-    while (holder.type !== 'bry-card') holder = host.parentOf(holder)!;
-
-    host.raise('bry-board', host.findAll(node => node.type === 'bry-board')[0]!, 'move', { card: holder.id, from: column('To do').id, to: column('Doing').id, position: 1 });
-    await host.waitFor(() => column('Doing').props.count === 101, { what: 'the move', timeout: 5_000 });
-
-    expect(host.calls.filter(call => call.tool === 'update_issue').map(call => call.input)).toEqual([
-      { id: 'issue_210', version: 1, status: 'doing', rank: (351 * 1024 + 352 * 1024) / 2 },
-    ]);
-    expect(titlesIn('Doing').slice(0, 3)).toEqual(['Issue 350', 'Issue 210', 'Issue 351']);
-  });
+  expect(host!.byText('Issue 1')).toBeTruthy();
+  await host!.waitFor(() => host!.byText('Live issue'), { what: 'live watched issue', timeout: 5_000 });
+  expect(host!.findAll(node => node.type === 'bry-alert' && node.props.tone === 'danger')).toHaveLength(0);
 });

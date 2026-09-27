@@ -58,7 +58,7 @@ export function IssueBoard({ issues, states, projectName, onOpen, onMove }: {
             count={cards.length}
             empty="Nothing here."
           >
-            {cards.map(issue => (
+            {cards.slice(0, 100).map(issue => (
               <bry-card key={issue.id} ref={keys.card(issue.id)} padding="3" pressable onPress={() => onOpen(issue.id)}>
                 <bry-stack gap="2">
                   <bry-text text={issue.title} />
@@ -69,6 +69,7 @@ export function IssueBoard({ issues, states, projectName, onOpen, onMove }: {
                 </bry-stack>
               </bry-card>
             ))}
+            {cards.length > 100 && <bry-text tone="muted" text={`Showing the first 100 of ${cards.length} issues.`} />}
           </bry-board-column>
         );
       })}
