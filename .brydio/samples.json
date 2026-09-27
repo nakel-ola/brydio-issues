@@ -1,14 +1,27 @@
 {
   "collections": {
+    "states": [
+      { "id": "state_backlog", "name": "Backlog", "group": "backlog", "colour": "neutral", "project": "project_launch", "position": 0 },
+      { "id": "state_todo", "name": "To do", "group": "unstarted", "colour": "neutral", "project": "project_launch", "position": 1024 },
+      { "id": "state_doing", "name": "In progress", "group": "started", "colour": "brand", "project": "project_launch", "position": 2048 },
+      { "id": "state_done", "name": "Done", "group": "completed", "colour": "success", "project": "project_launch", "position": 3072 }
+    ],
+    "sprints": [
+      { "id": "sprint_now", "name": "Sprint 12", "project": "project_launch", "status": "active", "start": "2026-09-21", "end": "2026-10-04", "goal": "Ship the Plan replacement" }
+    ],
+    "modules": [
+      { "id": "module_core", "name": "Core planning", "project": "project_launch", "status": "started", "start": "2026-09-21", "end": "2026-10-10" }
+    ],
     "issues": [
-      { "id": "issue_login", "title": "Fix the login page", "status": "todo", "labels": ["bug"], "rank": 1024 },
-      { "id": "issue_dark", "title": "Add a dark theme", "status": "todo", "rank": 2048, "due": "2026-10-03" },
-      { "id": "issue_export", "title": "Export to CSV", "status": "doing", "labels": ["data"], "rank": 1024 },
-      { "id": "issue_docs", "title": "Write the help page", "status": "done", "rank": 1024 }
+      { "id": "issue_list", "title": "Build the project list", "project": "project_launch", "sequence": 1, "state": "state_done", "priority": "high", "assignees": [], "labels": ["label_feature"], "modules": ["module_core"], "sprint": "sprint_now", "archived": false, "draft": false, "inbox": "none", "rank": 1024 },
+      { "id": "issue_sprints", "title": "Add sprint planning", "project": "project_launch", "sequence": 2, "state": "state_doing", "priority": "urgent", "assignees": [], "labels": ["label_feature"], "modules": ["module_core"], "sprint": "sprint_now", "target": "2026-10-03", "archived": false, "draft": false, "inbox": "none", "rank": 2048 },
+      { "id": "issue_views", "title": "Save filtered views", "project": "project_launch", "sequence": 3, "state": "state_todo", "priority": "medium", "assignees": [], "labels": [], "modules": [], "archived": false, "draft": false, "inbox": "pending", "rank": 3072 }
     ],
     "labels": [
-      { "name": "bug", "colour": "danger" },
-      { "name": "data", "colour": "brand" }
+      { "id": "label_feature", "name": "Feature", "colour": "brand", "project": "project_launch" }
+    ],
+    "project_plan": [
+      { "id": "plan_launch", "project": "project_launch", "priority": "high", "default_view": "list", "estimates": true, "target": "2026-10-10" }
     ]
   }
 }
